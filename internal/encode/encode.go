@@ -1,10 +1,11 @@
 package encode
 
 const (
-	flagTag   = "flag"
-	descTag   = "comment" // do we want a different tag for the flag vs toml?
-	fmtTag    = "fmt"
-	configTag = "config"
+	EnvTag    = "env"
+	FlagTag   = "flag"
+	DescTag   = "comment"
+	FormatTag = "format"
+	ConfigTag = "config"
 )
 
 type Unmarshaler interface {

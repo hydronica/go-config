@@ -319,7 +319,7 @@ func TestDecoder_Unmarshal(t *testing.T) {
 	type Astring string
 	type tConfig struct {
 		Dura   time.Duration
-		Time   time.Time `fmt:"2006-01-02"`
+		Time   time.Time `format:"2006-01-02"`
 		Bool   bool
 		String string
 

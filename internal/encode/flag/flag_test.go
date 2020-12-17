@@ -206,7 +206,7 @@ func TestUnmarshal(t *testing.T) {
 	type Astring string
 	type tConfig struct {
 		Dura   time.Duration
-		Time   time.Time `fmt:"2006-01-02"`
+		Time   time.Time `format:"2006-01-02"`
 		Bool   bool
 		String string
 
@@ -255,7 +255,9 @@ func TestUnmarshal(t *testing.T) {
 		if err != nil {
 			return nil, err
 		}
-		f.Parse()
+		if err := f.Parse(); err != nil {
+			return nil, err
+		}
 		err = f.Unmarshal(in.config)
 
 		return in.config, err
@@ -268,6 +270,10 @@ func TestUnmarshal(t *testing.T) {
 		"time.duration (int)": {
 			Input:    input{args: []string{"-dura=1000"}},
 			Expected: &tConfig{Dura: 1000},
+		},
+		"time.duration (default)": {
+			Input:    input{args: []string{}, config: &tConfig{Dura: time.Second}},
+			Expected: &tConfig{Dura: time.Second},
 		},
 		"time.Time": {
 			Input:    input{args: []string{"-time=2010-01-02"}},
@@ -327,6 +333,7 @@ func TestUnmarshal(t *testing.T) {
 					Uint:    2,
 					Float64: 3.4,
 					String:  "abc",
+					Dura:    10 * time.Second,
 				},
 			},
 			Expected: &tConfig{
@@ -334,6 +341,7 @@ func TestUnmarshal(t *testing.T) {
 				Uint:    2,
 				Float64: 3.4,
 				String:  "abc",
+				Dura:    10 * time.Second,
 			},
 		},
 		"ignore maps": {

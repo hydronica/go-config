@@ -9,10 +9,11 @@ import (
 	"strings"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/hydronica/go-config/encode/env"
-	"github.com/hydronica/go-config/encode/file"
-	flg "github.com/hydronica/go-config/encode/flag"
 	"github.com/pkg/errors"
+
+	"github.com/hydronica/go-config/internal/encode/env"
+	"github.com/hydronica/go-config/internal/encode/file"
+	flg "github.com/hydronica/go-config/internal/encode/flag"
 )
 
 // goConfig should probably be private so it can only be set through the new method.
@@ -86,11 +87,13 @@ func (g *goConfig) LoadOrDie() {
 // Before loading values, special flags (ie -help, -show, -config, -gen) are processed.
 func (g *goConfig) Load() error {
 	g.showConfig = flag.Bool("show", false, "print out the value of the config")
+
 	f, err := flg.New(g.config)
 	if err != nil {
 		return errors.Wrap(err, "flag setup")
 	}
 	g.flags = f
+
 	if g.fileEnabled {
 		g.genConfig = flag.String("g", "", "generate config file (toml,json,yaml,env)")
 		flag.StringVar(g.genConfig, "gen", "", "")
@@ -155,6 +158,7 @@ func (g *goConfig) Load() error {
 			return err
 		}
 	}
+
 	if g.fileEnabled && *g.configPath != "" {
 		if err := file.Load(*g.configPath, g.config); err != nil {
 			return err
