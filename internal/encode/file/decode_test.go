@@ -8,6 +8,8 @@ import (
 	"github.com/jbsmith7741/trial"
 )
 
+const filePath = "../../../test/"
+
 type SimpleStruct struct {
 	Name   string
 	Value  int
@@ -25,7 +27,7 @@ func TestLoad(t *testing.T) {
 	}
 	cases := trial.Cases{
 		"toml": {
-			Input: "../../test/test.toml",
+			Input: filePath + "test.toml",
 			Expected: &SimpleStruct{
 				Name:   "toml",
 				Value:  10,
@@ -33,7 +35,7 @@ func TestLoad(t *testing.T) {
 				Dura:   10 * time.Second},
 		},
 		"json": {
-			Input: "../../test/test.json",
+			Input: filePath + "test.json",
 			Expected: &SimpleStruct{
 				Name:   "json",
 				Value:  10,
@@ -42,7 +44,7 @@ func TestLoad(t *testing.T) {
 			},
 		},
 		"yaml": {
-			Input:    "../../test/test.yaml",
+			Input:    filePath + "test.yaml",
 			Expected: &SimpleStruct{Name: "yaml", Value: 10, Enable: true, Dura: 10 * time.Second},
 		},
 		"unknown": {
@@ -50,7 +52,7 @@ func TestLoad(t *testing.T) {
 			ExpectedErr: errors.New("unknown file type"),
 		},
 		"missing file": {
-			Input:       "../../test/missing.toml",
+			Input:       filePath + "missing.toml",
 			ExpectedErr: errors.New("no such file or directory"),
 		},
 	}

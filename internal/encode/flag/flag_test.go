@@ -124,7 +124,7 @@ func TestNew(t *testing.T) {
 		"time": {
 			Input: &struct {
 				Time     time.Time
-				CTime    time.Time `flag:"ctime" fmt:"2006-01-02"`
+				CTime    time.Time `flag:"ctime" format:"2006-01-02"`
 				WaitTime time.Duration
 			}{
 				Time:     trial.TimeDay("2019-01-02"),

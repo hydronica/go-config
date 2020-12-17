@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/pkg/errors"
 
 	"github.com/hydronica/go-config/internal/encode/env"
 	"github.com/hydronica/go-config/internal/encode/file"
@@ -90,7 +89,7 @@ func (g *goConfig) Load() error {
 
 	f, err := flg.New(g.config)
 	if err != nil {
-		return errors.Wrap(err, "flag setup")
+		return fmt.Errorf("flag setup %w", err)
 	}
 	g.flags = f
 
@@ -136,7 +135,7 @@ func (g *goConfig) Load() error {
 	}
 
 	if err := g.flags.Parse(); err != nil {
-		return errors.Wrap(err, "flag parse")
+		return fmt.Errorf("flag parse %w", err)
 	}
 
 	if g.showVersion != nil && *g.showVersion {

@@ -3,11 +3,9 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/golang:1.13
-        environment:
-          GO111MODULE: "on"
-    working_directory: /go/src/github.com/pclvng/go-config
+      - image: circleci/golang:1.15
+    working_directory: /go/src/github.com/hydronica/go-config
     steps:
       - checkout
-      - run: go test -coverprofile=coverage.txt -covermode=atomic -race -v -bench . ./...
+      - run: go test -coverprofile=coverage.txt -covermode=atomic -race -v ./...
       - run: bash <(curl -s https://codecov.io/bash)
