@@ -8,7 +8,7 @@ import (
 	"github.com/hydronica/toml"
 	"gopkg.in/yaml.v2"
 
-	"github.com/hydronica/go-config/encode/env"
+	"github.com/hydronica/go-config/internal/encode/env"
 )
 
 // Encode a config to a file based on the ext passed in

@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/iancoleman/strcase"
+
+	"github.com/hydronica/go-config/internal/encode"
 )
 
 func NewEncoder() *Encoder {
@@ -45,7 +47,7 @@ func (e *Encoder) marshal(prefix string, v interface{}) ([]byte, error) {
 
 		// Check general 'config' tag value. if it has a "ignore" value
 		// then skip it entirely.
-		if cfgV := vStruct.Type().Field(i).Tag.Get(configTag); cfgV == "ignore" {
+		if cfgV := vStruct.Type().Field(i).Tag.Get(encode.ConfigTag); cfgV == "ignore" {
 			continue
 		}
 
@@ -53,7 +55,7 @@ func (e *Encoder) marshal(prefix string, v interface{}) ([]byte, error) {
 		//
 		// If the field name is used it is converted to screaming snake case (uppercase with underscores).
 		name := vStruct.Type().Field(i).Name
-		tag := vStruct.Type().Field(i).Tag.Get(envTag) // env tag value
+		tag := vStruct.Type().Field(i).Tag.Get(encode.EnvTag) // env tag value
 		switch tag {
 		case "-":
 			continue // ignore field
@@ -106,7 +108,7 @@ func (e *Encoder) marshal(prefix string, v interface{}) ([]byte, error) {
 			// time.Time special struct case
 			if field.Type().String() == "time.Time" {
 				// check for 'fmt' tag.
-				timeFmt := vStruct.Type().Field(i).Tag.Get(fmtTag)
+				timeFmt := vStruct.Type().Field(i).Tag.Get(encode.FormatTag)
 				if timeFmt == "" {
 					timeFmt = time.RFC3339
 				}

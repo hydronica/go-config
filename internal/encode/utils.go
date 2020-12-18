@@ -133,7 +133,7 @@ func SetField(value reflect.Value, s string, sField reflect.StructField) error {
 	case reflect.Struct:
 		v := reflect.New(value.Type())
 		if value.Type().String() == "time.Time" {
-			timeFmt := sField.Tag.Get(fmtTag)
+			timeFmt := sField.Tag.Get(FormatTag)
 
 			_, err := SetTime(value, s, timeFmt)
 			return err

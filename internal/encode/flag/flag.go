@@ -11,16 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hydronica/go-config/encode"
 	"github.com/iancoleman/strcase"
 	"github.com/jbsmith7741/go-tools/appenderr"
-)
 
-const (
-	flagTag   = "flag"
-	descTag   = "comment" // do we want a different tag for the flag vs toml?
-	fmtTag    = "fmt"
-	configTag = "config"
+	"github.com/hydronica/go-config/internal/encode"
 )
 
 type Flags struct {
@@ -42,10 +36,10 @@ func New(i interface{}) (*Flags, error) {
 	for i := 0; i < vStruct.NumField(); i++ {
 		field := vStruct.Field(i)
 		dField := vStruct.Type().Field(i)
-		tag := dField.Tag.Get(flagTag)
+		tag := dField.Tag.Get(encode.FlagTag)
 		name := strcase.ToKebab(dField.Name)
-		desc := dField.Tag.Get(descTag)
-		confTag := dField.Tag.Get(configTag)
+		desc := dField.Tag.Get(encode.DescTag)
+		confTag := dField.Tag.Get(encode.ConfigTag)
 		if tag == "" {
 			tag = name
 		}
@@ -56,14 +50,21 @@ func New(i interface{}) (*Flags, error) {
 		}
 
 		if isAlias(field) {
-			if field.Type().String() == "time.Duration" {
+			/*if field.Type().String() == "time.Duration" {
 				d := field.Interface().(time.Duration)
 				flagSet.String(tag, d.String(), desc)
+				continue
+			}*/
+			if implementsStringer(field) {
+				s := field.Interface().(fmt.Stringer).String()
+				flagSet.String(tag, s, desc)
+				flg.defaults[tag] = s
 				continue
 			}
 			if implementsMarshaler(field) {
 				b, _ := field.Interface().(encoding.TextMarshaler).MarshalText()
 				flagSet.String(tag, string(b), desc)
+				flg.defaults[tag] = string(b)
 				continue
 			}
 		}
@@ -108,13 +109,14 @@ func New(i interface{}) (*Flags, error) {
 		case reflect.Struct:
 
 			if field.Type().String() == "time.Time" {
-				timeFmt := dField.Tag.Get(fmtTag)
+				timeFmt := dField.Tag.Get(encode.FormatTag)
 				timeFmt = getTimeFormat(timeFmt)
 				t := field.Interface().(time.Time)
 				flagSet.String(tag, t.Format(timeFmt), desc)
 				flg.defaults[tag] = t.Format(timeFmt)
 				continue
 			}
+
 			// support a struct if they implement a marshaler
 			if implementsMarshaler(field) {
 				b, _ := field.Interface().(encoding.TextMarshaler).MarshalText()
@@ -129,7 +131,6 @@ func New(i interface{}) (*Flags, error) {
 
 // Parse the internal flags and the user defined flags
 func (f *Flags) Parse() error {
-
 	// add other defined flags
 	flag.VisitAll(func(flg *flag.Flag) {
 		f.Var(flg.Value, flg.Name, flg.Usage)
@@ -149,7 +150,7 @@ func (f Flags) Unmarshal(c interface{}) error {
 	for i := 0; i < vStruct.NumField(); i++ {
 		field := vStruct.Field(i)
 		dField := vStruct.Type().Field(i)
-		tag := dField.Tag.Get(flagTag)
+		tag := dField.Tag.Get(encode.FlagTag)
 		name := strcase.ToKebab(dField.Name)
 		//confTag := dField.Tag.Get(configTag)
 		if tag != "" {
@@ -200,6 +201,10 @@ func implementsUnmarshaler(v reflect.Value) bool {
 
 func implementsMarshaler(v reflect.Value) bool {
 	return v.Type().Implements(reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem())
+}
+
+func implementsStringer(v reflect.Value) bool {
+	return v.Type().Implements(reflect.TypeOf((*fmt.Stringer)(nil)).Elem())
 }
 
 func getTimeFormat(timeFmt string) string {

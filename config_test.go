@@ -1,11 +1,12 @@
 package config
 
 import (
+	"flag"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/jbsmith7741/trial"
+	"github.com/hydronica/trial"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -15,7 +16,7 @@ type testStruct struct {
 	Uint  uint
 
 	Dura   time.Duration
-	Time   time.Time `fmt:"2006-01-02"`
+	Time   time.Time `format:"2006-01-02"`
 	Enable bool
 
 	Float32 float32 `flag:"float32"`
@@ -29,38 +30,176 @@ type childStruct struct {
 }
 
 func TestGoConfig_Load(t *testing.T) {
-
-	c := testStruct{
-		Dura:    time.Second,
-		Value:   1,
-		Uint:    2,
-		Float32: 12.3,
-		Enable:  true,
+	type input struct {
+		config testStruct
+		envs   map[string]string
+		flags  []string
 	}
+	fn := func(i trial.Input) (interface{}, error) {
 
-	// setup environment vars
-	os.Setenv("DURA", "12s")
-	os.Setenv("VALUE", "8")
-	os.Setenv("FLOAT_64", "123.4")
-	os.Setenv("TIME", "2019-05-06")
-	os.Setenv("NAME", "env")
+		in := i.Interface().(input)
+		if in.envs == nil {
+			in.envs = make(map[string]string)
+		}
+		if in.flags == nil {
+			in.flags = make([]string, 0)
+		}
+		for k, v := range in.envs {
+			if err := os.Setenv(k, v); err != nil {
+				return nil, err
+			}
+		}
+		defer func() {
+			for k := range in.envs {
+				os.Setenv(k, "")
+			}
+			// reset flags
+			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+		}()
 
-	os.Args = []string{"go-config", "-c=test/test.toml", "-time=2012-02-04", "-name=flag", "-enable=false", "-float32=55", "-dura=5s"}
-
-	if err := New(&c).Load(); err != nil {
-		t.Fatal(err)
+		os.Args = append([]string{"go-config"}, in.flags...)
+		err := New(&in.config).Load()
+		return in.config, err
 	}
-	exp := testStruct{
-		Name:    "flag",
-		Time:    trial.TimeDay("2012-02-04"),
-		Dura:    5 * time.Second,
-		Value:   10,
-		Uint:    2,
-		Float32: 55,
-		Float64: 123.4,
+	cases := trial.Cases{
+		"default": {
+			Input: input{
+				config: testStruct{
+					Dura:    time.Second,
+					Value:   1,
+					Uint:    2,
+					Float32: 12.3,
+					Enable:  true,
+				}},
+			Expected: testStruct{
+				Dura:    time.Second,
+				Value:   1,
+				Uint:    2,
+				Float32: 12.3,
+				Enable:  true,
+			},
+		},
+		"file": {
+			Input: input{
+				config: testStruct{
+					Dura:    time.Second,
+					Value:   1,
+					Uint:    2,
+					Float32: 12.3,
+				},
+				flags: []string{"-c=test/test.toml"},
+			},
+			Expected: testStruct{
+				Name:    "toml",
+				Time:    trial.TimeDay("2010-08-10"),
+				Dura:    10 * time.Second,
+				Enable:  true,
+				Value:   10,
+				Uint:    2,
+				Float32: 99.9,
+			},
+		},
+		"flag": {
+			Input: input{
+				config: testStruct{
+					Dura:    time.Second,
+					Value:   1,
+					Uint:    2,
+					Float32: 12.3,
+					Enable:  true,
+				},
+				flags: []string{"-time=2012-02-04", "-name=flag", "-enable=false", "-float32=55", "-dura=5s"},
+			},
+			Expected: testStruct{
+				Name:    "flag",
+				Time:    trial.TimeDay("2012-02-04"),
+				Dura:    5 * time.Second,
+				Value:   1,
+				Uint:    2,
+				Float32: 55,
+			},
+		},
+		"env": {
+			Input: input{
+				config: testStruct{
+					Dura:    time.Second,
+					Value:   1,
+					Uint:    2,
+					Float32: 12.3,
+				},
+				envs: map[string]string{
+					"DURA":     "12s",
+					"VALUE":    "8",
+					"FLOAT_64": "123.4",
+					"TIME":     "2019-05-06",
+					"NAME":     "env"},
+			},
+			Expected: testStruct{
+				Name:    "env",
+				Time:    trial.TimeDay("2019-05-06"),
+				Dura:    12 * time.Second,
+				Value:   8,
+				Uint:    2,
+				Float32: 12.3,
+				Float64: 123.4,
+			},
+		},
+		"env+file": {
+			Input: input{
+				config: testStruct{
+					Dura:    time.Second,
+					Value:   1,
+					Uint:    2,
+					Float32: 12.3,
+				},
+				envs: map[string]string{
+					"DURA":     "12s",
+					"VALUE":    "8",
+					"FLOAT_64": "123.4",
+					"TIME":     "2019-05-06",
+					"NAME":     "env"},
+				flags: []string{"-c=test/test.toml"},
+			},
+			Expected: testStruct{
+				Name:    "toml",
+				Time:    trial.TimeDay("2010-08-10"),
+				Dura:    10 * time.Second,
+				Value:   10,
+				Uint:    2,
+				Float32: 99.9,
+				Float64: 123.4,
+				Enable:  true,
+			},
+		},
+		"env+file+flag": {
+			Input: input{
+				config: testStruct{
+					Dura:    time.Second,
+					Value:   1,
+					Uint:    2,
+					Float32: 12.3,
+					Enable:  true,
+				},
+				envs: map[string]string{
+					"DURA":     "12s",
+					"VALUE":    "8",
+					"FLOAT_64": "123.4",
+					"TIME":     "2019-05-06",
+					"NAME":     "env"},
+				flags: []string{"-c=test/test.toml", "-time=2012-02-04", "-name=flag", "-enable=false", "-float32=55", "-dura=5s"},
+			},
+			Expected: testStruct{
+				Name:    "flag",
+				Time:    trial.TimeDay("2012-02-04"),
+				Dura:    5 * time.Second,
+				Value:   10,
+				Uint:    2,
+				Float32: 55,
+				Float64: 123.4,
+			},
+		},
 	}
-
-	assert.Equal(t, c, exp)
+	trial.New(fn, cases).SubTest(t)
 
 }
 
@@ -105,7 +244,7 @@ func TestLoadFile(t *testing.T) {
 		t.Fatal("toml file load error: ", err)
 	}
 	exp := testStruct{
-		Dura:    time.Second,
+		Dura:    10 * time.Second,
 		Time:    trial.TimeDay("2010-08-10"),
 		Value:   10,
 		Uint:    2,
@@ -113,7 +252,9 @@ func TestLoadFile(t *testing.T) {
 		Enable:  true,
 		Name:    "toml",
 	}
-	assert.Equal(t, c, exp)
+	if eq, s := trial.Equal(c, exp); !eq {
+		t.Error(s)
+	}
 }
 
 func TestLoadFlag(t *testing.T) {

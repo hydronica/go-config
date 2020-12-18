@@ -1,3 +1,4 @@
 name: "yaml"
 value: 10
 enable: true
+dura: "10s"
