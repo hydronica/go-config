@@ -29,7 +29,7 @@ func New(i interface{}) (*Flags, error) {
 		defaults: make(map[string]string),
 	}
 	if !isValidConfig(i) {
-		return nil, errors.New("invalid config")
+		return nil, errors.New("invalid config, must be pointer to a struct")
 	}
 	flagSet := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	vStruct := reflect.ValueOf(i).Elem()
