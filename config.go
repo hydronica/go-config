@@ -65,7 +65,7 @@ func New(c interface{}) *goConfig {
 func (g *goConfig) LoadOrDie() {
 	err := g.Load()
 	if err != nil {
-		println("err: %v", err.Error())
+		log.Printf("err: %v", err.Error())
 		os.Exit(0)
 	}
 }
