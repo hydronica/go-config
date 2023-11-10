@@ -87,7 +87,14 @@ func (g *goConfig) LoadOrDie() {
 func (g *goConfig) Load() error {
 	g.showConfig = flag.Bool("show", false, "print out the value of the config")
 
-	f, err := flg.New(g.config)
+	var f *flg.Flags
+	var err error
+	if g.flagEnabled {
+		f, err = flg.New(g.config)
+	} else { // don't add flags when disabled
+		f, err = flg.New(nil)
+	}
+
 	if err != nil {
 		return fmt.Errorf("flag setup %w", err)
 	}

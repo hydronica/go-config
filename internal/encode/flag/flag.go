@@ -23,15 +23,18 @@ type Flags struct {
 }
 
 // New creates a custom flagset based on the struct i.
-//
 func New(i interface{}) (*Flags, error) {
 	flg := &Flags{
 		defaults: make(map[string]string),
 	}
+	flagSet := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	if i == nil {
+		flg.FlagSet = flagSet
+		return flg, nil
+	}
 	if !isValidConfig(i) {
 		return nil, errors.New("invalid config, must be pointer to a struct")
 	}
-	flagSet := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	vStruct := reflect.ValueOf(i).Elem()
 	for i := 0; i < vStruct.NumField(); i++ {
 		field := vStruct.Field(i)
