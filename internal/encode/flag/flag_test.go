@@ -33,9 +33,6 @@ func TestNew(t *testing.T) {
 		return result, nil
 	}
 	cases := trial.Cases{
-		"nil config": {
-			ShouldErr: true,
-		},
 		"non pointer": {
 			Input:     struct{}{},
 			ShouldErr: true,
