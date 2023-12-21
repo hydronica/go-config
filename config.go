@@ -150,14 +150,6 @@ func (g *goConfig) Load() error {
 		os.Exit(0)
 	}
 
-	if *g.genConfig != "" {
-		err := file.Encode(os.Stdout, g.config, *g.genConfig)
-		if err != nil {
-			log.Fatal(err)
-		}
-		os.Exit(0)
-	}
-
 	// load in lowest priority order: env -> file -> flag
 	if g.envEnabled {
 		if err := env.New().Unmarshal(g.config); err != nil {
@@ -174,6 +166,14 @@ func (g *goConfig) Load() error {
 		if err := g.flags.Unmarshal(g.config); err != nil {
 			return err
 		}
+	}
+
+	if *g.genConfig != "" {
+		err := file.Encode(os.Stdout, g.config, *g.genConfig)
+		if err != nil {
+			log.Fatal(err)
+		}
+		os.Exit(0)
 	}
 
 	if *g.showConfig {
