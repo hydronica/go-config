@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/hydronica/trial"
-	"github.com/stretchr/testify/assert"
 )
 
 type testStruct struct {
@@ -35,9 +34,8 @@ func TestGoConfig_Load(t *testing.T) {
 		envs   map[string]string
 		flags  []string
 	}
-	fn := func(i trial.Input) (interface{}, error) {
+	fn := func(in input) (interface{}, error) {
 
-		in := i.Interface().(input)
 		if in.envs == nil {
 			in.envs = make(map[string]string)
 		}
@@ -61,7 +59,7 @@ func TestGoConfig_Load(t *testing.T) {
 		err := New(&in.config).Load()
 		return in.config, err
 	}
-	cases := trial.Cases{
+	cases := trial.Cases[input, any]{
 		"default": {
 			Input: input{
 				config: testStruct{
@@ -229,7 +227,9 @@ func TestLoadEnv(t *testing.T) {
 		Float32: 12.3,
 		Float64: 123.4,
 	}
-	assert.Equal(t, c, exp)
+	if eq, diff := trial.Equal(c, exp); !eq {
+		t.Error(diff)
+	}
 }
 
 func TestLoadFile(t *testing.T) {
@@ -277,5 +277,23 @@ func TestLoadFlag(t *testing.T) {
 		Uint:    2,
 		Float32: 55,
 	}
-	assert.Equal(t, c, exp)
+	if eq, diff := trial.Equal(c, exp); !eq {
+		t.Error(diff)
+	}
+}
+
+func TestOptions(t *testing.T) {
+	opt := defaultOpts
+	opt ^= OptToml | OptFlag | OptFiles
+	if opt != 0b1100001 {
+		t.Errorf("Expected binary value of 110001 got %b", opt)
+	}
+
+	if opt.isEnabled(OptToml) {
+		t.Error("toml should be disabled")
+	}
+	if !opt.isEnabled(OptEnv) {
+		t.Error("env should be enabled")
+	}
+
 }

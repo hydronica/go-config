@@ -3,7 +3,7 @@ package file
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -18,13 +18,13 @@ func Load(f string, i interface{}) error {
 		_, err := toml.DecodeFile(f, i)
 		return err
 	case "json":
-		b, err := ioutil.ReadFile(f)
+		b, err := os.ReadFile(f)
 		if err != nil {
 			return err
 		}
 		return json.Unmarshal(b, i)
 	case "yaml", "yml":
-		b, err := ioutil.ReadFile(f)
+		b, err := os.ReadFile(f)
 		if err != nil {
 			return err
 		}
