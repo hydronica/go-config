@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hydronica/trial"
+	"github.com/jbsmith7741/trial"
 )
 
 type testStruct struct {
@@ -34,8 +34,8 @@ func TestGoConfig_Load(t *testing.T) {
 		envs   map[string]string
 		flags  []string
 	}
-	fn := func(in input) (interface{}, error) {
-
+	fn := func(v ...interface{}) (interface{}, error) {
+		in := v[0].(input)
 		if in.envs == nil {
 			in.envs = make(map[string]string)
 		}
@@ -59,7 +59,7 @@ func TestGoConfig_Load(t *testing.T) {
 		err := New(&in.config).Load()
 		return in.config, err
 	}
-	cases := trial.Cases[input, any]{
+	cases := trial.Cases{
 		"default": {
 			Input: input{
 				config: testStruct{
