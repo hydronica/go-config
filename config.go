@@ -75,7 +75,7 @@ const defaultOpts = OptEnv | OptFiles | OptFlag | OptShow | OptGenConf
 // OptGenConf: remove flag option to generate config files
 // OptShow: remove flag option to print of config values
 func (g *goConfig) Disable(opts Options) *goConfig {
-	g.options ^= opts
+	g.options &^= opts
 	return g
 }
 
