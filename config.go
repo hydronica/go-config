@@ -21,12 +21,7 @@ import (
 type goConfig struct {
 	config interface{}
 
-	envEnabled  bool
-	fileEnabled bool
-	tomlEnabled bool
-	yamlEnabled bool
-	jsonEnabled bool
-	flagEnabled bool
+	options Options
 
 	// special flags
 	showVersion *bool
@@ -50,15 +45,50 @@ type Validator interface {
 // it goes through the struct and sets up corresponding flags to be used during parsing
 func New(c interface{}) *goConfig {
 	return &goConfig{
-		envEnabled:  true,
-		fileEnabled: true,
-		tomlEnabled: true,
-		yamlEnabled: true,
-		jsonEnabled: true,
-		flagEnabled: true,
+		options: defaultOpts,
 
 		config: c,
 	}
+}
+
+type Options uint64
+
+const (
+	OptEnv Options = 1 << iota
+	OptToml
+	OptYaml
+	OptJson
+	OptFlag
+	OptGenConf // -g to generate config files
+	OptShow    // -show to show the set config values
+)
+const OptFiles = OptToml | OptYaml | OptJson
+const defaultOpts = OptEnv | OptFiles | OptFlag | OptShow | OptGenConf
+
+// Disable Options. By Default all Options are enabled.
+// OptEnv: ignore environment variables
+// OptFiles: ignore supported config files
+// OptYaml: ignore yaml config files
+// OptJson: ignore json config files
+// OptToml: ignore toml config files
+// OptFlag: ignore flag config files
+// OptGenConf: remove flag option to generate config files
+// OptShow: remove flag option to print of config values
+func (g *goConfig) Disable(opts Options) *goConfig {
+	g.options &^= opts
+	return g
+}
+
+// SetOptions overrides the default Options to just set the desired options
+// Example SetOptions(OptFiles | OptGenConf | OptShow)
+func (g *goConfig) SetOptions(opts Options) *goConfig {
+	g.options = opts
+	return g
+}
+
+// isEnabled is a helper method to check if the proper bits are set
+func (o Options) isEnabled(v Options) bool {
+	return o&v == v
 }
 
 // LoadOrDie is the same as Load except it exits if there is an error.
@@ -85,11 +115,13 @@ func (g *goConfig) LoadOrDie() {
 //
 // Before loading values, special flags (ie -help, -show, -config, -gen) are processed.
 func (g *goConfig) Load() error {
-	g.showConfig = flag.Bool("show", false, "print out the value of the config")
+	if g.options.isEnabled(OptShow) {
+		g.showConfig = flag.Bool("show", false, "print out the value of the config")
+	}
 
 	var f *flg.Flags
 	var err error
-	if g.flagEnabled {
+	if g.options.isEnabled(OptFlag) {
 		f, err = flg.New(g.config)
 	} else { // don't add flags when disabled
 		f, err = flg.New(nil)
@@ -100,9 +132,11 @@ func (g *goConfig) Load() error {
 	}
 	g.flags = f
 
-	if g.fileEnabled {
-		g.genConfig = flag.String("g", "", "generate config file (toml,json,yaml,env)")
-		flag.StringVar(g.genConfig, "gen", "", "")
+	if g.options.isEnabled(OptFiles) {
+		if g.options.isEnabled(OptGenConf) {
+			g.genConfig = flag.String("g", "", "generate config file (toml,json,yaml,env)")
+			flag.StringVar(g.genConfig, "gen", "", "")
+		}
 		g.configPath = flag.String("c", "", "path for config file")
 		flag.StringVar(g.configPath, "config", "", "")
 	}
@@ -151,24 +185,24 @@ func (g *goConfig) Load() error {
 	}
 
 	// load in lowest priority order: env -> file -> flag
-	if g.envEnabled {
+	if g.options.isEnabled(OptEnv) {
 		if err := env.New().Unmarshal(g.config); err != nil {
 			return err
 		}
 	}
 
-	if g.fileEnabled && *g.configPath != "" {
+	if g.options.isEnabled(OptFiles) && *g.configPath != "" {
 		if err := file.Load(*g.configPath, g.config); err != nil {
 			return err
 		}
 	}
-	if g.flagEnabled {
+	if g.options.isEnabled(OptFlag) {
 		if err := g.flags.Unmarshal(g.config); err != nil {
 			return err
 		}
 	}
 
-	if *g.genConfig != "" {
+	if g.options.isEnabled(OptGenConf) && *g.genConfig != "" {
 		err := file.Encode(os.Stdout, g.config, *g.genConfig)
 		if err != nil {
 			log.Fatal(err)
@@ -176,7 +210,7 @@ func (g *goConfig) Load() error {
 		os.Exit(0)
 	}
 
-	if *g.showConfig {
+	if g.options.isEnabled(OptShow) && *g.showConfig {
 		spew.Dump(g.config)
 		os.Exit(0)
 	}
@@ -186,21 +220,6 @@ func (g *goConfig) Load() error {
 		return val.Validate()
 	}
 	return nil
-}
-
-// VarComment will add a variable comment/description to generated help messages
-func (g *goConfig) VarComment(field, comment string) *goConfig {
-	// todo: add map[field]comment to go through to add description
-	// how do we handle embedded structs that have the same Variable name as the parent
-	/*type dchild struct {
-		Name string
-	}
-	type dummy struct {
-		Name string
-		Child dchild
-	}*/
-
-	return g
 }
 
 // LoadFile loads configuration values from a file (yaml, toml, json)
@@ -243,17 +262,19 @@ func (g *goConfig) Description(s string) *goConfig {
 	return g
 }
 
+// Deprecated: Use Disable(OptEnv) instead
 // DisableEnv tells goConfig not to use environment variables
 func (g *goConfig) DisableEnv() *goConfig {
-	g.envEnabled = false
+	g.Disable(OptEnv)
 	return g
 }
 
+// Deprecated: Use Disable(OptFiles) instead
 // DisableFiles removes the c (config) flag used for defining a config file
 // from the help menu and skips file parsing when reading in
 // values.
 func (g *goConfig) DisableFiles() *goConfig {
-	g.fileEnabled = false
+	g.Disable(OptFiles)
 	return g
 }
 
@@ -261,30 +282,31 @@ func (g *goConfig) DisableFiles() *goConfig {
 // from being parsed and will remove 'toml' type options
 // from the help menu.
 func (g *goConfig) DisableTOML() *goConfig {
-	g.tomlEnabled = false
+	g.Disable(OptToml)
 	return g
 }
 
+// Deprecated: Use Disable(OptYaml) instead
 // DisableYAML will prevent files with a '.yaml', '.yml' extension
 // from being parsed and will remove 'yaml', 'yml' type options
 // from the help menu.
 func (g *goConfig) DisableYAML() *goConfig {
-	g.yamlEnabled = false
+	g.Disable(OptYaml)
 	return g
 }
 
+// Deprecated: Use Disable(OptJson) instead
 // DisableJSON will prevent files with a '.json' extension
 // from being parsed and will remove 'json' type options
 // from the help menu.
 func (g *goConfig) DisableJSON() *goConfig {
-	g.yamlEnabled = false
+	g.Disable(OptJson)
 	return g
 }
 
-// DisableFlag prevents setting variables from flags.
-// Non variable flags should still work [c (config), v (version), g (gen)]
+// Deprecated: Use Disable(OptFlag) instead
 func (g *goConfig) DisableFlags() *goConfig {
-	g.flagEnabled = false
+	g.Disable(OptFlag)
 	return g
 }
 

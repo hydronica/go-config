@@ -6,8 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hydronica/trial"
-	"github.com/stretchr/testify/assert"
+	"github.com/jbsmith7741/trial"
 )
 
 type testStruct struct {
@@ -35,9 +34,8 @@ func TestGoConfig_Load(t *testing.T) {
 		envs   map[string]string
 		flags  []string
 	}
-	fn := func(i trial.Input) (interface{}, error) {
-
-		in := i.Interface().(input)
+	fn := func(v ...interface{}) (interface{}, error) {
+		in := v[0].(input)
 		if in.envs == nil {
 			in.envs = make(map[string]string)
 		}
@@ -229,7 +227,9 @@ func TestLoadEnv(t *testing.T) {
 		Float32: 12.3,
 		Float64: 123.4,
 	}
-	assert.Equal(t, c, exp)
+	if eq, diff := trial.Equal(c, exp); !eq {
+		t.Error(diff)
+	}
 }
 
 func TestLoadFile(t *testing.T) {
@@ -277,5 +277,36 @@ func TestLoadFlag(t *testing.T) {
 		Uint:    2,
 		Float32: 55,
 	}
-	assert.Equal(t, c, exp)
+	if eq, diff := trial.Equal(c, exp); !eq {
+		t.Error(diff)
+	}
+}
+
+func TestOptions(t *testing.T) {
+	opt := defaultOpts
+	opt &^= OptToml | OptFlag | OptFiles
+	if opt != 0b1100001 {
+		t.Errorf("Expected binary value of 110001 got %b", opt)
+	}
+
+	if opt.isEnabled(OptToml) {
+		t.Error("toml should be disabled")
+	}
+	if !opt.isEnabled(OptEnv) {
+		t.Error("env should be enabled")
+	}
+
+	// verify double disable
+	v := &goConfig{options: defaultOpts}
+	v.Disable(OptFlag)
+	if v.options.isEnabled(OptFlag) {
+		t.Error("Flag should be disabled")
+	}
+	v.Disable(OptFlag)
+	if v.options.isEnabled(OptFlag) {
+		t.Error("Flag 2nd should stay disabled")
+	}
+	if v.options != 0b1101111 {
+		t.Errorf("Expected only flag bit off %b!=%b", 0b1101111, v.options)
+	}
 }

@@ -22,7 +22,6 @@ type Encoder struct {
 }
 
 func (e *Encoder) Marshal(v interface{}) ([]byte, error) {
-	fmt.Fprint(e.buf, "#!/bin/sh\n\n")
 	return e.marshal("", v)
 }
 
@@ -133,5 +132,5 @@ func (e *Encoder) marshal(prefix string, v interface{}) ([]byte, error) {
 }
 
 func (e *Encoder) write(field string, value interface{}) {
-	fmt.Fprintf(e.buf, "export %s=%v\n", field, value)
+	fmt.Fprintf(e.buf, "%s=%v\n", field, value)
 }

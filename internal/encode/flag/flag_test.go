@@ -341,6 +341,18 @@ func TestUnmarshal(t *testing.T) {
 				Dura:    10 * time.Second,
 			},
 		},
+		"private values": {
+			Input: input{
+				config: &struct {
+					name string
+					Name string
+				}{},
+				args: []string{"-name=abc"}},
+			Expected: &struct {
+				name string
+				Name string
+			}{Name: "abc"},
+		},
 		"ignore maps": {
 			Input: input{
 				config: &struct {

@@ -9,15 +9,15 @@ import (
 	"time"
 )
 
-// setField converts the string s to the type of value and sets the value if possible.
+// SetField converts the string s to the type of value and sets the value if possible.
 // Pointers and slices are recursively dealt with by following the pointer
 // or creating a generic slice of type value.
 //
-// All structs and that implement encoding.TextUnmarshaler are supported
+// # All structs and that implement encoding.TextUnmarshaler are supported
 //
 // Does not support array literals.
 func SetField(value reflect.Value, s string, sField reflect.StructField) error {
-	if isZero(value.Kind(), s) {
+	if isZero(value.Kind(), s) || !value.CanSet() {
 		return nil
 	}
 	if isAlias(value) {
