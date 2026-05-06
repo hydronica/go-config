@@ -1,6 +1,7 @@
 package env
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -55,8 +56,32 @@ KEY3=c`,
 			Input:    `MSG='hello world'`,
 			Expected: map[string]string{"MSG": "hello world"},
 		},
+		"single_quoted_escapes": {
+			Input:    `APOS='it\'s fine'`,
+			Expected: map[string]string{"APOS": "it's fine"},
+		},
+		"single_quoted_backslash": {
+			Input:    `P='C:\\share\\path'`,
+			Expected: map[string]string{"P": `C:\share\path`},
+		},
 		"double_quoted_with_escapes": {
 			Input: `LINE="a\nb\tc\""
+PATH="C:\\temp"`,
+			Expected: map[string]string{
+				"LINE": "a\nb\tc\"",
+				"PATH": "C:\\temp",
+			},
+		},
+		"double_quoted_with_comment": {
+			Input: `LINE="a\nb\tc\""#hello world
+PATH="C:\\temp"`,
+			Expected: map[string]string{
+				"LINE": "a\nb\tc\"",
+				"PATH": `C:\temp`,
+			},
+		},
+		"double_quoted_with_comment+quote": {
+			Input: `LINE="a\nb\tc\""#hello world"
 PATH="C:\\temp"`,
 			Expected: map[string]string{
 				"LINE": "a\nb\tc\"",
@@ -67,9 +92,17 @@ PATH="C:\\temp"`,
 			Input:    `FOO=bar baz # not used`,
 			Expected: map[string]string{"FOO": "bar baz"},
 		},
+		"inline_tab_before_hash_strips_comment": {
+			Input:    "FOO=bar\t#tail",
+			Expected: map[string]string{"FOO": "bar"},
+		},
 		"quoted_value_preserves_hash": {
 			Input:    `FOO="bar # still inside"`,
 			Expected: map[string]string{"FOO": "bar # still inside"},
+		},
+		"url_hash_not_comment": {
+			Input:    `REF=https://host.example/path#fragment`,
+			Expected: map[string]string{"REF": "https://host.example/path#fragment"},
 		},
 		"line_without_equals_skipped": {
 			Input: `NOT_A_VAR_LINE
@@ -97,6 +130,94 @@ X=second`,
 		"unquoted_value_trimmed": {
 			Input:    "PORT=8080",
 			Expected: map[string]string{"PORT": "8080"},
+		},
+		"empty_double_quoted": {
+			Input:    `EMPTY=""`,
+			Expected: map[string]string{"EMPTY": ""},
+		},
+		"unterminated_double_quote": {
+			Input: `OK=1
+BAD="no closing quote
+FINE=2`,
+			ExpectedErr: errors.New("unterminated quoted"),
+		},
+		"unterminated_double_quote_at_eof": {
+			Input:       `X="still open`,
+			ExpectedErr: errors.New("unterminated quoted"),
+		},
+		"unterminated_single_quote": {
+			Input:       "X='oops",
+			ExpectedErr: errors.New("unterminated quoted"),
+		},
+	}
+	trial.New(fn, cases).SubTest(t)
+}
+
+func TestUnescapeEnvDoubleQuoted(t *testing.T) {
+	fn := func(in string) (string, error) {
+		return unescape2Quoted(in), nil
+	}
+	cases := trial.Cases[string, string]{
+		"empty": {
+			Input:    "",
+			Expected: "",
+		},
+		"no_escapes": {
+			Input:    `hello`,
+			Expected: "hello",
+		},
+		"newline_tab_cr": {
+			Input:    `a\nb\tc\rd`,
+			Expected: "a\nb\tc\rd",
+		},
+		"quote_and_backslash": {
+			Input:    `say \"hi\" and \\`,
+			Expected: `say "hi" and \`,
+		},
+		"unknown_escape_drops_backslash": {
+			Input:    `a\zb`,
+			Expected: "azb",
+		},
+		"trailing_backslash": {
+			Input:    `x\`,
+			Expected: `x\`,
+		},
+		"apostrophe_and_backslash": {
+			Input:    `it\'s \\one`,
+			Expected: `it's \one`,
+		},
+	}
+	trial.New(fn, cases).SubTest(t)
+}
+
+func TestUnescapeEnvSingleQuoted(t *testing.T) {
+	fn := func(in string) (string, error) {
+		return unescape1Quoted(in), nil
+	}
+	cases := trial.Cases[string, string]{
+		"empty": {
+			Input:    "",
+			Expected: "",
+		},
+		"no_escapes": {
+			Input:    `hello`,
+			Expected: "hello",
+		},
+		"apostrophe_and_backslash": {
+			Input:    `it\'s \\one`,
+			Expected: `it's \one`,
+		},
+		"backslash_n_is_not_newline": {
+			Input:    `a\nb`,
+			Expected: "anb",
+		},
+		"unknown_escape_drops_backslash": {
+			Input:    `a\zb`,
+			Expected: "azb",
+		},
+		"trailing_backslash": {
+			Input:    `x\`,
+			Expected: `x\`,
 		},
 	}
 	trial.New(fn, cases).SubTest(t)
