@@ -66,7 +66,7 @@ const OptFiles = OptToml | OptYaml | OptJson
 const defaultOpts = OptEnv | OptFiles | OptFlag | OptShow | OptGenConf
 
 // Disable Options. By Default all Options are enabled.
-// OptEnv: ignore environment variables
+// OptEnv: ignore environment variables and cwd ".env"
 // OptFiles: ignore supported config files
 // OptYaml: ignore yaml config files
 // OptJson: ignore json config files
@@ -103,7 +103,9 @@ func (g *goConfig) LoadOrDie() {
 // Load the configs in the following priority from most passive to most active:
 //
 // 1. Defaults
-// 2. Environment variables
+// 2. Environment variables and the working directory ".env" file (read line by line;
+//    for each struct field, a non-empty value on that key in ".env" overrides os.Getenv)
+//    mapped into the struct
 // 3. File (toml, yaml, json)
 // 4. Flags (exception of config and version flag which are processed first)
 //
@@ -231,7 +233,9 @@ func LoadFile(f string, c interface{}) error {
 	return file.Load(f, c)
 }
 
-// LoadEnv is similar to LoadFile, but only checks env vars.
+// LoadEnv maps the process environment and ".env" from the working directory into c
+// (same rules as OptEnv in Load). Use env.LoadDotenv if you need variables copied into
+// the process environment for child processes.
 func LoadEnv(c interface{}) error {
 	return env.New().Unmarshal(c)
 }
