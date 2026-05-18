@@ -91,7 +91,7 @@ func (d *Decoder) Unmarshal(v interface{}) error {
 			}
 			// set value to field.
 			if err := encode.SetField(field, envVal, vStruct.Type().Field(i)); err != nil {
-				return fmt.Errorf("'%s' from '%s' cannot be set to %s (%s)", envVal, name, vStruct.Type().Field(i).Name, field.Type())
+				return fmt.Errorf("'%s' from '%s' cannot be set to %s (%s) %v", envVal, name, vStruct.Type().Field(i).Name, field.Type(), err)
 			}
 		}
 	}
