@@ -11,7 +11,7 @@ type opts struct {
 	Value  int
 	Enable bool
 	Dura   time.Duration `json:"-"`
-	Time   time.Time     `format:"2006-01-02" env:"-"`
+	Time   time.Time     `format:"2006-01-02" env:"TIME"`
 }
 
 func main() {

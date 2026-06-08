@@ -55,18 +55,20 @@ type Options uint64
 
 const (
 	OptEnv Options = 1 << iota
+	OptEnvFile  // load .env from working directory
 	OptToml
 	OptYaml
 	OptJson
 	OptFlag
-	OptGenConf // -g to generate config files
-	OptShow    // -show to show the set config values
+	OptGenConf  // -g to generate config files
+	OptShow     // -show to show the set config values
 )
 const OptFiles = OptToml | OptYaml | OptJson
-const defaultOpts = OptEnv | OptFiles | OptFlag | OptShow | OptGenConf
+const defaultOpts = OptEnv | OptFiles | OptFlag | OptShow | OptGenConf | OptEnvFile
 
 // Disable Options. By Default all Options are enabled.
-// OptEnv: ignore environment variables and cwd ".env"
+// OptEnv: ignore environment variables
+// OptEnvFile: ignore .env file from working directory
 // OptFiles: ignore supported config files
 // OptYaml: ignore yaml config files
 // OptJson: ignore json config files
@@ -186,10 +188,19 @@ func (g *goConfig) Load() error {
 		os.Exit(0)
 	}
 
-	// load in lowest priority order: env -> file -> flag
+	// load in lowest priority order: env -> .env file -> config file -> flag
 	if g.options.isEnabled(OptEnv) {
 		if err := env.New().Unmarshal(g.config); err != nil {
 			return err
+		}
+	}
+
+	if g.options.isEnabled(OptEnvFile) {
+		if _, err := os.Stat(".env"); err == nil {
+			log.Println("loading .env file from working directory")
+			if err := env.LoadEnvFile(".env", g.config); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -233,9 +244,8 @@ func LoadFile(f string, c interface{}) error {
 	return file.Load(f, c)
 }
 
-// LoadEnv maps the process environment and ".env" from the working directory into c
-// (same rules as OptEnv in Load). Use env.LoadDotenv if you need variables copied into
-// the process environment for child processes.
+// LoadEnv maps only the process environment variables into c.
+// Use LoadFile with a .env path, or use Load() which auto-loads both env and .env by default.
 func LoadEnv(c interface{}) error {
 	return env.New().Unmarshal(c)
 }
