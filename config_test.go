@@ -352,6 +352,72 @@ func TestArgs_beforeLoad(t *testing.T) {
 	}
 }
 
+func TestGoConfig_ConfigPath(t *testing.T) {
+	type input struct {
+		configPath string
+		flags      []string
+	}
+	fn := func(v ...interface{}) (interface{}, error) {
+		in := v[0].(input)
+		defer func() {
+			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+		}()
+
+		c := testStruct{
+			Dura:    time.Second,
+			Value:   1,
+			Uint:    2,
+			Float32: 12.3,
+		}
+		os.Args = append([]string{"go-config"}, in.flags...)
+		err := New(&c).ConfigPath(in.configPath).Disable(OptEnv | OptEnvFile).Load()
+		return c, err
+	}
+	cases := trial.Cases{
+		"loads default path when -c not provided": {
+			Input: input{configPath: "test/test.toml"},
+			Expected: testStruct{
+				Name:    "toml",
+				Time:    trial.TimeDay("2010-08-10"),
+				Dura:    10 * time.Second,
+				Enable:  true,
+				Value:   10,
+				Uint:    2,
+				Float32: 99.9,
+			},
+		},
+		"-c overrides default path": {
+			Input: input{
+				configPath: "test/test.toml",
+				flags:      []string{"-c=test/test.yaml"},
+			},
+			Expected: testStruct{
+				Name:    "yaml",
+				Time:    trial.TimeDay("2010-08-10"),
+				Dura:    10 * time.Second,
+				Enable:  true,
+				Value:   10,
+				Uint:    2,
+				Float32: 12.3,
+			},
+		},
+		"empty default does not load file": {
+			Input: input{configPath: ""},
+			Expected: testStruct{
+				Dura:    time.Second,
+				Value:   1,
+				Uint:    2,
+				Float32: 12.3,
+			},
+		},
+		"missing default path returns error": {
+			Input:     input{configPath: "missing.toml"},
+			ShouldErr: true,
+		},
+	}
+	trial.New(fn, cases).SubTest(t)
+}
+
 func TestOptions(t *testing.T) {
 	opt := defaultOpts
 	opt &^= OptToml | OptFlag | OptFiles
