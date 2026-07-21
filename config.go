@@ -259,7 +259,24 @@ func LoadFlag(c interface{}) error {
 	if err := f.Parse(); err != nil {
 		return err
 	}
+	defaultCfg.flags = f
 	return f.Unmarshal(c)
+}
+
+// Args returns the non-flag command-line arguments remaining after Load,
+// LoadOrDie, or LoadFlag. Positional args may appear before, after, or between
+// flags. Returns nil if flags have not been parsed yet.
+func Args() []string {
+	return defaultCfg.Args()
+}
+
+// Args returns the non-flag command-line arguments remaining after Load or
+// LoadOrDie on this config instance. Returns nil if flags have not been parsed.
+func (g *goConfig) Args() []string {
+	if g.flags == nil {
+		return nil
+	}
+	return g.flags.Args()
 }
 
 // Version string that describes the app which enables the -v (version) flag.

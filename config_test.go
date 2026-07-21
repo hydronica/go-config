@@ -264,6 +264,11 @@ func TestLoadFlag(t *testing.T) {
 		Uint:    2,
 		Float32: 12.3,
 	}
+	defer func() {
+		// clean up flag state so later tests can re-register flags
+		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+		defaultCfg = New(nil)
+	}()
 
 	os.Args = []string{"go-config", "-name=flag", "-enable=false", "-float32=55", "-dura=5s", "-time=2012-02-04"}
 	if err := LoadFlag(&c); err != nil {
@@ -279,6 +284,71 @@ func TestLoadFlag(t *testing.T) {
 	}
 	if eq, diff := trial.Equal(c, exp); !eq {
 		t.Error(diff)
+	}
+}
+
+func TestArgs(t *testing.T) {
+	type input struct {
+		args []string
+	}
+	type output struct {
+		Args []string
+		Name string
+	}
+	fn := func(v ...interface{}) (interface{}, error) {
+		in := v[0].(input)
+		defer func() {
+			// clean up flag state so later tests can re-register flags
+			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+			defaultCfg = New(nil)
+		}()
+
+		c := &testStruct{}
+		os.Args = append([]string{"go-config"}, in.args...)
+		os.Unsetenv("NAME")
+		if err := Load(c); err != nil {
+			return nil, err
+		}
+		return output{Args: Args(), Name: c.Name}, nil
+	}
+	cases := trial.Cases{
+		"no positional args": {
+			Input:    input{args: []string{"-name=foo"}},
+			Expected: output{Args: []string{}, Name: "foo"},
+		},
+		"positional after flags": {
+			Input:    input{args: []string{"-name=foo", "file1", "file2"}},
+			Expected: output{Args: []string{"file1", "file2"}, Name: "foo"},
+		},
+		"positional before flags": {
+			Input:    input{args: []string{"file1", "file2", "-name=foo"}},
+			Expected: output{Args: []string{"file1", "file2"}, Name: "foo"},
+		},
+		"positional before and after flags": {
+			Input:    input{args: []string{"before", "-name=foo", "after"}},
+			Expected: output{Args: []string{"before", "after"}, Name: "foo"},
+		},
+		"interleaved flags and positionals": {
+			Input:    input{args: []string{"a", "-name=foo", "b", "-enable=true", "c"}},
+			Expected: output{Args: []string{"a", "b", "c"}, Name: "foo"},
+		},
+		"only positional": {
+			Input:    input{args: []string{"a", "b"}},
+			Expected: output{Args: []string{"a", "b"}},
+		},
+		"space-separated flag value among positionals": {
+			Input:    input{args: []string{"pos1", "-name", "foo", "pos2"}},
+			Expected: output{Args: []string{"pos1", "pos2"}, Name: "foo"},
+		},
+	}
+	trial.New(fn, cases).SubTest(t)
+}
+
+func TestArgs_beforeLoad(t *testing.T) {
+	defaultCfg = New(nil)
+	got := Args()
+	if got != nil {
+		t.Errorf("Args() got %v want nil", got)
 	}
 }
 
