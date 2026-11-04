@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/iancoleman/strcase"
@@ -134,9 +135,42 @@ typeCheck:
 		field = field.Elem()
 		goto typeCheck
 	case reflect.Slice:
-		e.write(name, field.Interface())
+		e.write(name, joinSliceForEnv(field))
 	}
 	return nil
+}
+
+// joinSliceForEnv formats slice elements as a comma-separated list so env
+// decode (which splits on commas) can round-trip the value.
+func joinSliceForEnv(field reflect.Value) string {
+	if field.Len() == 0 {
+		return ""
+	}
+	parts := make([]string, field.Len())
+	for i := 0; i < field.Len(); i++ {
+		parts[i] = stringifySliceElem(field.Index(i))
+	}
+	return strings.Join(parts, ",")
+}
+
+func stringifySliceElem(v reflect.Value) string {
+	switch v.Kind() {
+	case reflect.String:
+		return v.String()
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		if v.Type().String() == "time.Duration" {
+			return v.Interface().(time.Duration).String()
+		}
+		return strconv.FormatInt(v.Int(), 10)
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return strconv.FormatUint(v.Uint(), 10)
+	case reflect.Bool:
+		return strconv.FormatBool(v.Bool())
+	case reflect.Float32, reflect.Float64:
+		return strconv.FormatFloat(v.Float(), 'g', -1, 64)
+	default:
+		return fmt.Sprint(v.Interface())
+	}
 }
 
 func marshalText(field reflect.Value) ([]byte, bool) {

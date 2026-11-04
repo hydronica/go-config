@@ -354,6 +354,26 @@ func TestDecoder_Unmarshal(t *testing.T) {
 				}{Meta: mStruct{"abc"}},
 			},
 		},
+		// PR #11 Bugbot: UnmarshalText-only structs must stay leaves (not recurse).
+		"nested: unmarshaler-only leaf prefixed": {
+			Input: input{
+				config: &struct {
+					Block struct {
+						Meta uStruct `env:"META"`
+					} `env:"APP"`
+				}{},
+				args: map[string]string{"APP_META": "abc"},
+			},
+			Expected: &struct {
+				Block struct {
+					Meta uStruct `env:"META"`
+				} `env:"APP"`
+			}{
+				Block: struct {
+					Meta uStruct `env:"META"`
+				}{Meta: uStruct{"abc"}},
+			},
+		},
 		"nested: pointer struct": {
 			Input: input{
 				config: &struct {
@@ -397,5 +417,15 @@ func (m mStruct) MarshalText() ([]byte, error) {
 
 func (m *mStruct) UnmarshalText(b []byte) error {
 	m.value = string(b)
+	return nil
+}
+
+// uStruct implements encoding.TextUnmarshaler only (no TextMarshaler).
+type uStruct struct {
+	value string
+}
+
+func (u *uStruct) UnmarshalText(b []byte) error {
+	u.value = string(b)
 	return nil
 }

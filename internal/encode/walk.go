@@ -17,7 +17,8 @@ func JoinPrefix(parent, segment, sep string) string {
 }
 
 // IsRecursableStruct reports whether field is a nested config struct to walk into.
-// time.Time and encoding.TextMarshaler types are treated as leaves.
+// time.Time and types that implement encoding.TextMarshaler or encoding.TextUnmarshaler
+// are treated as leaves so single-key SetField / MarshalText paths still run.
 func IsRecursableStruct(field reflect.Value) bool {
 	field = derefStructField(field)
 	if field.Kind() != reflect.Struct {
@@ -26,7 +27,8 @@ func IsRecursableStruct(field reflect.Value) bool {
 	if field.Type().String() == "time.Time" {
 		return false
 	}
-	return !implementsTextMarshaler(field)
+	return !implementsIface(field, reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()) &&
+		!implementsIface(field, reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem())
 }
 
 func derefStructField(field reflect.Value) reflect.Value {
@@ -39,16 +41,15 @@ func derefStructField(field reflect.Value) reflect.Value {
 	return field
 }
 
-func implementsTextMarshaler(v reflect.Value) bool {
+func implementsIface(v reflect.Value, iface reflect.Type) bool {
 	t := v.Type()
-	marshaler := reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
-	if t.Implements(marshaler) {
+	if t.Implements(iface) {
 		return true
 	}
-	if v.CanAddr() && v.Addr().Type().Implements(marshaler) {
+	if v.CanAddr() && v.Addr().Type().Implements(iface) {
 		return true
 	}
-	if t.Kind() != reflect.Ptr && reflect.PointerTo(t).Implements(marshaler) {
+	if t.Kind() != reflect.Ptr && reflect.PointerTo(t).Implements(iface) {
 		return true
 	}
 	return false

@@ -220,6 +220,19 @@ func TestEncoder_Marshal(t *testing.T) {
 			},
 			Expected: "APP_META=abc\n",
 		},
+		// PR #11 Bugbot: slices must encode as comma-separated values for decode round-trip.
+		"slice ints": {
+			Input:    &struct{ Nums []int }{Nums: []int{1, 2, 3}},
+			Expected: "NUMS=1,2,3\n",
+		},
+		"slice strings": {
+			Input:    &struct{ Tags []string }{Tags: []string{"part1", "part2"}},
+			Expected: "TAGS=part1,part2\n",
+		},
+		"slice floats": {
+			Input:    &struct{ Rates []float64 }{Rates: []float64{1.1, 2.2}},
+			Expected: "RATES=1.1,2.2\n",
+		},
 	}
 	trial.New(fn, cases).Test(t)
 }
