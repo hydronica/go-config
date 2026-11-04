@@ -441,6 +441,19 @@ func TestGoConfig_ConfigPath(t *testing.T) {
 				Float32: 12.3,
 			},
 		},
+		// Directory paths succeed os.Stat but are not loadable; skip them and keep trying.
+		"falls through to second when first is a directory": {
+			Input: input{configPaths: []string{"test", "test/test.yaml"}},
+			Expected: testStruct{
+				Name:    "yaml",
+				Time:    trial.Day("2010-08-10"),
+				Dura:    10 * time.Second,
+				Enable:  true,
+				Value:   10,
+				Uint:    2,
+				Float32: 12.3,
+			},
+		},
 		"none of several defaults found warns and continues": {
 			Input: input{configPaths: []string{"missing1.toml", "missing2.yaml"}},
 			Expected: testStruct{

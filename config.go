@@ -305,8 +305,9 @@ func (g *goConfig) Description(s string) *goConfig {
 }
 
 // ConfigPath sets default config file paths used when -c or -config is not
-// provided. Paths are tried in order; the first that exists is loaded. Empty
-// strings are ignored. An explicit -c or -config flag overrides these values.
+// provided. Paths are tried in order; the first existing regular file is
+// loaded. Directories and other non-files are skipped. Empty strings are
+// ignored. An explicit -c or -config flag overrides these values.
 func (g *goConfig) ConfigPath(paths ...string) *goConfig {
 	g.defaultConfigPaths = g.defaultConfigPaths[:0]
 	for _, p := range paths {
@@ -332,8 +333,8 @@ func (g *goConfig) RelativeToWorkDir() *goConfig {
 }
 
 // loadConfigFile loads from -c/-config when set, otherwise the first existing
-// ConfigPath default. Missing defaults warn and continue; an explicit missing
-// -c path still errors.
+// regular-file ConfigPath default. Missing and non-file paths are skipped;
+// an explicit missing -c path still errors.
 func (g *goConfig) loadConfigFile() error {
 	configExplicit := false
 	if g.flags != nil {
@@ -362,11 +363,15 @@ func (g *goConfig) loadConfigFile() error {
 			return err
 		}
 		checked = append(checked, resolved)
-		if _, err := os.Stat(resolved); err != nil {
+		info, err := os.Stat(resolved)
+		if err != nil {
 			if os.IsNotExist(err) {
 				continue
 			}
 			return err
+		}
+		if !info.Mode().IsRegular() {
+			continue
 		}
 		return file.Load(resolved, g.config)
 	}
