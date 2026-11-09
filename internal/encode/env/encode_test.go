@@ -94,8 +94,8 @@ func TestEncoder_Marshal(t *testing.T) {
 				CTime    time.Time `flag:"ctime" format:"2006-01-02"`
 				WaitTime time.Duration
 			}{
-				Time:     trial.TimeDay("2019-01-02"),
-				CTime:    trial.TimeDay("2019-01-02"),
+				Time:     trial.Day("2019-01-02"),
+				CTime:    trial.Day("2019-01-02"),
 				WaitTime: time.Hour,
 			},
 			Expected: "TIME=2019-01-02T00:00:00Z\nC_TIME=2019-01-02\nWAIT_TIME=1h0m0s\n",

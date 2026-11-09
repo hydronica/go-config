@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jbsmith7741/go-tools/appenderr"
 	"github.com/hydronica/trial"
+	"github.com/jbsmith7741/go-tools/appenderr"
 )
 
 func TestDecoder_Unmarshal(t *testing.T) {
@@ -94,7 +94,7 @@ func TestDecoder_Unmarshal(t *testing.T) {
 		},
 		"time.Time": {
 			Input:    input{args: map[string]string{"TIME": "2010-01-02"}},
-			Expected: &tConfig{Time: trial.TimeDay("2010-01-02")},
+			Expected: &tConfig{Time: trial.Day("2010-01-02")},
 		},
 		"int": {
 			Input:    input{args: map[string]string{"INT": "10", "INT8": "8", "INT16": "16", "INT32": "32", "INT64": "64"}},

@@ -113,7 +113,7 @@ func TestGoConfig_Load(t *testing.T) {
 			},
 			Expected: testStruct{
 				Name:    "toml",
-				Time:    trial.TimeDay("2010-08-10"),
+				Time:    trial.Day("2010-08-10"),
 				Dura:    10 * time.Second,
 				Enable:  true,
 				Value:   10,
@@ -134,7 +134,7 @@ func TestGoConfig_Load(t *testing.T) {
 			},
 			Expected: testStruct{
 				Name:    "flag",
-				Time:    trial.TimeDay("2012-02-04"),
+				Time:    trial.Day("2012-02-04"),
 				Dura:    5 * time.Second,
 				Value:   1,
 				Uint:    2,
@@ -158,7 +158,7 @@ func TestGoConfig_Load(t *testing.T) {
 			},
 			Expected: testStruct{
 				Name:    "env",
-				Time:    trial.TimeDay("2019-05-06"),
+				Time:    trial.Day("2019-05-06"),
 				Dura:    12 * time.Second,
 				Value:   8,
 				Uint:    2,
@@ -184,7 +184,7 @@ func TestGoConfig_Load(t *testing.T) {
 			},
 			Expected: testStruct{
 				Name:    "toml",
-				Time:    trial.TimeDay("2010-08-10"),
+				Time:    trial.Day("2010-08-10"),
 				Dura:    10 * time.Second,
 				Value:   10,
 				Uint:    2,
@@ -212,7 +212,7 @@ func TestGoConfig_Load(t *testing.T) {
 			},
 			Expected: testStruct{
 				Name:    "flag",
-				Time:    trial.TimeDay("2012-02-04"),
+				Time:    trial.Day("2012-02-04"),
 				Dura:    5 * time.Second,
 				Value:   10,
 				Uint:    2,
@@ -343,7 +343,7 @@ func TestLoadEnv(t *testing.T) {
 	exp := testStruct{
 		Name:    "env",
 		Dura:    12 * time.Second,
-		Time:    trial.TimeDay("2019-05-06"),
+		Time:    trial.Day("2019-05-06"),
 		Value:   8,
 		Uint:    2,
 		Float32: 12.3,
@@ -367,7 +367,7 @@ func TestLoadFile(t *testing.T) {
 	}
 	exp := testStruct{
 		Dura:    10 * time.Second,
-		Time:    trial.TimeDay("2010-08-10"),
+		Time:    trial.Day("2010-08-10"),
 		Value:   10,
 		Uint:    2,
 		Float32: 99.9,
@@ -398,7 +398,7 @@ func TestLoadFlag(t *testing.T) {
 	}
 	exp := testStruct{
 		Name:    "flag",
-		Time:    trial.TimeDay("2012-02-04"),
+		Time:    trial.Day("2012-02-04"),
 		Dura:    5 * time.Second,
 		Value:   1,
 		Uint:    2,
@@ -498,7 +498,7 @@ func TestGoConfig_ConfigPath(t *testing.T) {
 			Input: input{configPaths: []string{"test/test.toml"}},
 			Expected: testStruct{
 				Name:    "toml",
-				Time:    trial.TimeDay("2010-08-10"),
+				Time:    trial.Day("2010-08-10"),
 				Dura:    10 * time.Second,
 				Enable:  true,
 				Value:   10,
@@ -513,7 +513,7 @@ func TestGoConfig_ConfigPath(t *testing.T) {
 			},
 			Expected: testStruct{
 				Name:    "yaml",
-				Time:    trial.TimeDay("2010-08-10"),
+				Time:    trial.Day("2010-08-10"),
 				Dura:    10 * time.Second,
 				Enable:  true,
 				Value:   10,

@@ -124,8 +124,8 @@ func TestNew(t *testing.T) {
 				CTime    time.Time `flag:"ctime" format:"2006-01-02"`
 				WaitTime time.Duration
 			}{
-				Time:     trial.TimeDay("2019-01-02"),
-				CTime:    trial.TimeDay("2019-01-02"),
+				Time:     trial.Day("2019-01-02"),
+				CTime:    trial.Day("2019-01-02"),
 				WaitTime: time.Hour,
 			},
 			Expected: map[string]*tFlag{
@@ -310,7 +310,7 @@ func TestUnmarshal(t *testing.T) {
 		},
 		"time.Time": {
 			Input:    input{args: []string{"-time=2010-01-02"}},
-			Expected: &tConfig{Time: trial.TimeDay("2010-01-02")},
+			Expected: &tConfig{Time: trial.Day("2010-01-02")},
 		},
 		"int": {
 			Input:    input{args: []string{"-int=10", "-int8=8", "-int16=16", "-int32=32", "-int64=64"}},
