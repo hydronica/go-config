@@ -4,6 +4,7 @@ const (
 	EnvTag      = "env"
 	FlagTag     = "flag"
 	DescTag     = "comment"
+	FmtTag      = "fmt"
 	FormatTag   = "format"
 	ConfigTag   = "config"
 	MaskTag     = "mask"

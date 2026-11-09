@@ -133,7 +133,7 @@ func SetField(value reflect.Value, s string, sField reflect.StructField) error {
 	case reflect.Struct:
 		v := reflect.New(value.Type())
 		if value.Type().String() == "time.Time" {
-			timeFmt := sField.Tag.Get(FormatTag)
+			timeFmt := TimeFormat(sField)
 
 			_, err := SetTime(value, s, timeFmt)
 			return err
@@ -164,6 +164,15 @@ func isZero(t reflect.Kind, s string) bool {
 		return s == "0"
 	}
 	return s == ""
+}
+
+// TimeFormat returns the layout for a time.Time field. The fmt tag is the primary name;
+// format is still accepted for existing users. When both are set, fmt wins.
+func TimeFormat(sf reflect.StructField) string {
+	if f := sf.Tag.Get(FmtTag); f != "" {
+		return f
+	}
+	return sf.Tag.Get(FormatTag)
 }
 
 // setTime expects value to be time.Time.

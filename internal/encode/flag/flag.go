@@ -152,7 +152,7 @@ switchStart:
 		goto switchStart
 	case reflect.Struct:
 		if field.Type().String() == "time.Time" {
-			timeFmt := getTimeFormat(sf.Tag.Get(encode.FormatTag))
+			timeFmt := getTimeFormat(encode.TimeFormat(sf))
 			t := field.Interface().(time.Time)
 			flagSet.String(name, t.Format(timeFmt), desc)
 			defaults[name] = t.Format(timeFmt)

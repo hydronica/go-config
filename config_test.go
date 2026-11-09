@@ -47,6 +47,11 @@ func TestGoConfig_Load(t *testing.T) {
 		DB   dbReq  `flag:"db"`
 		API  apiReq `flag:"api" req:"true"`
 	}
+	type timeTags struct {
+		Fmt    time.Time `fmt:"2006-01-02"`
+		Format time.Time `format:"2006/01/02"`
+		Both   time.Time `fmt:"2006-01-02" format:"2006/01/02"`
+	}
 	type input struct {
 		config  any // pointer to the config struct; Load populates it in place
 		envs    map[string]string
@@ -283,6 +288,35 @@ func TestGoConfig_Load(t *testing.T) {
 				Host: "fromflag", Port: 1,
 				DB: dbReq{Password: "x"}, API: apiReq{Key: "k"},
 			},
+		},
+		// B6: the README documents the fmt tag for time layouts; the code only read format.
+		"B6: fmt tag parses env value": {
+			Input: input{
+				config: &timeTags{},
+				envs:   map[string]string{"FMT": "2019-05-06"},
+			},
+			Expected: timeTags{Fmt: trial.Day("2019-05-06")},
+		},
+		"B6: format tag still parses env value": {
+			Input: input{
+				config: &timeTags{},
+				envs:   map[string]string{"FORMAT": "2019/05/06"},
+			},
+			Expected: timeTags{Format: trial.Day("2019-05-06")},
+		},
+		"B6: fmt wins when fmt and format are both set": {
+			Input: input{
+				config: &timeTags{},
+				envs:   map[string]string{"BOTH": "2019-05-06"},
+			},
+			Expected: timeTags{Both: trial.Day("2019-05-06")},
+		},
+		"B6: fmt tag parses flag value": {
+			Input: input{
+				config: &timeTags{},
+				flags:  []string{"-fmt=2019-05-06"},
+			},
+			Expected: timeTags{Fmt: trial.Day("2019-05-06")},
 		},
 	}
 	trial.New(fn, cases).SubTest(t)

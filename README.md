@@ -497,7 +497,7 @@ Password: ****
 
 All types support time.Time and time.Duration marshaling and unmarshaling. 
 
-time.Time default expected format is time.RFC339. You can specify a custom format in
+time.Time default expected format is time.RFC3339. You can specify a custom format in
 the value of the 'fmt' struct tag. Formatting is the same as that supported in the
 time package. For readability and simplicity you can also supply time package variable
 name of the format. For example, if you wanted to use the time.RFC3339Nano format the 'fmt'
@@ -505,10 +505,13 @@ tag/value would be `fmt:"RFC3339Nano"`. Unmarshaling will expect that format and
 will place the default value in that format. Marshaling will also automatically place
 an inline comment specifying the expected time format.
 
+The `format` tag is accepted as an older name for the same setting. If a field sets both
+`fmt` and `format`, `fmt` wins.
+
 ```sh
 type options struct {
-    DefaultFormat time.Time // Defaults to expect time.RFC339 format.
-    OtherStandardFormat time.Time `fmt:"RFC339Nano"` // Expects the time.RFC339Nano format.
+    DefaultFormat time.Time // Defaults to expect time.RFC3339 format.
+    OtherStandardFormat time.Time `fmt:"RFC3339Nano"` // Expects the time.RFC3339Nano format.
     CustomTimeField time.Time `fmt:"2006/01/02"`
 }
 
