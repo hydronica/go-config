@@ -220,7 +220,9 @@ func (g *goConfig) Load() error {
 		}
 	}
 
-	if g.options.isEnabled(OptGenConf) && *g.genConfig != "" {
+	// g.genConfig is only allocated when OptFiles is enabled (see registerSpecialFlags),
+	// so OptGenConf alone isn't enough to check here; both bits must be set.
+	if g.options.isEnabled(OptFiles|OptGenConf) && *g.genConfig != "" {
 		err := file.Encode(os.Stdout, g.config, *g.genConfig)
 		if err != nil {
 			log.Fatal(err)

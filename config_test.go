@@ -689,6 +689,22 @@ func TestLoad_reservedFlag(t *testing.T) {
 	}
 }
 
+func TestLoad_disableFilesOnly(t *testing.T) {
+	// Disable(OptFiles) alone (without also disabling OptGenConf) left g.genConfig nil
+	// while OptGenConf's isEnabled check still passed, panicking on *g.genConfig in Load.
+	// README documents this exact call (Disable(OptEnv | OptEnvFile | OptFiles)).
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	t.Cleanup(func() {
+		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	})
+
+	os.Args = []string{"go-config"}
+	var cfg struct{ Name string }
+	if err := New(&cfg).Disable(OptEnv | OptEnvFile | OptFiles).Load(); err != nil {
+		t.Fatalf("Load() with Disable(OptFiles) error = %v, want nil", err)
+	}
+}
+
 func TestOptions(t *testing.T) {
 	opt := defaultOpts
 	opt &^= OptToml | OptFlag | OptFiles
