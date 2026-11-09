@@ -1,12 +1,13 @@
 package encode
 
 const (
-	EnvTag    = "env"
-	FlagTag   = "flag"
-	DescTag   = "comment"
-	FormatTag = "format"
-	ConfigTag = "config"
-	MaskTag   = "mask"
+	EnvTag      = "env"
+	FlagTag     = "flag"
+	DescTag     = "comment"
+	FormatTag   = "format"
+	ConfigTag   = "config"
+	MaskTag     = "mask"
+	RequiredTag = "req"
 )
 
 type Unmarshaler interface {

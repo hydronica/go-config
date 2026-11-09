@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -34,12 +35,25 @@ type childStruct struct {
 }
 
 func TestGoConfig_Load(t *testing.T) {
-	type input struct {
-		config testStruct
-		envs   map[string]string
-		flags  []string
+	type dbReq struct {
+		Password string `req:"true"`
 	}
-	fn := func(in input) (testStruct, error) {
+	type apiReq struct {
+		Key string
+	}
+	type reqStruct struct {
+		Host string `req:"true"`
+		Port int    `req:"true"`
+		DB   dbReq  `flag:"db"`
+		API  apiReq `flag:"api" req:"true"`
+	}
+	type input struct {
+		config  any // pointer to the config struct; Load populates it in place
+		envs    map[string]string
+		flags   []string
+		disable Options // zero disables nothing
+	}
+	fn := func(in input) (any, error) {
 		if in.envs == nil {
 			in.envs = make(map[string]string)
 		}
@@ -48,7 +62,7 @@ func TestGoConfig_Load(t *testing.T) {
 		}
 		for k, v := range in.envs {
 			if err := os.Setenv(k, v); err != nil {
-				return testStruct{}, err
+				return nil, err
 			}
 		}
 		defer func() {
@@ -60,13 +74,14 @@ func TestGoConfig_Load(t *testing.T) {
 		}()
 
 		os.Args = append([]string{"go-config"}, in.flags...)
-		err := New(&in.config).Load()
-		return in.config, err
+		err := New(in.config).Disable(in.disable).Load()
+		// return the struct value so it compares against Expected values, not a pointer
+		return reflect.ValueOf(in.config).Elem().Interface(), err
 	}
-	cases := trial.Cases[input, testStruct]{
+	cases := trial.Cases[input, any]{
 		"default": {
 			Input: input{
-				config: testStruct{
+				config: &testStruct{
 					Dura:    time.Second,
 					Value:   1,
 					Uint:    2,
@@ -83,7 +98,7 @@ func TestGoConfig_Load(t *testing.T) {
 		},
 		"file": {
 			Input: input{
-				config: testStruct{
+				config: &testStruct{
 					Dura:    time.Second,
 					Value:   1,
 					Uint:    2,
@@ -103,7 +118,7 @@ func TestGoConfig_Load(t *testing.T) {
 		},
 		"flag": {
 			Input: input{
-				config: testStruct{
+				config: &testStruct{
 					Dura:    time.Second,
 					Value:   1,
 					Uint:    2,
@@ -123,7 +138,7 @@ func TestGoConfig_Load(t *testing.T) {
 		},
 		"env": {
 			Input: input{
-				config: testStruct{
+				config: &testStruct{
 					Dura:    time.Second,
 					Value:   1,
 					Uint:    2,
@@ -148,7 +163,7 @@ func TestGoConfig_Load(t *testing.T) {
 		},
 		"env+file": {
 			Input: input{
-				config: testStruct{
+				config: &testStruct{
 					Dura:    time.Second,
 					Value:   1,
 					Uint:    2,
@@ -175,7 +190,7 @@ func TestGoConfig_Load(t *testing.T) {
 		},
 		"env+file+flag": {
 			Input: input{
-				config: testStruct{
+				config: &testStruct{
 					Dura:    time.Second,
 					Value:   1,
 					Uint:    2,
@@ -198,6 +213,75 @@ func TestGoConfig_Load(t *testing.T) {
 				Uint:    2,
 				Float32: 55,
 				Float64: 123.4,
+			},
+		},
+		"B5: struct default satisfies required": {
+			Input: input{
+				config: &reqStruct{
+					Host: "localhost", Port: 1,
+					DB: dbReq{Password: "x"}, API: apiReq{Key: "k"},
+				},
+				disable: OptEnv | OptEnvFile,
+			},
+			Expected: reqStruct{
+				Host: "localhost", Port: 1,
+				DB: dbReq{Password: "x"}, API: apiReq{Key: "k"},
+			},
+		},
+		"B5: missing scalar required field errors": {
+			Input: input{
+				config: &reqStruct{
+					Port: 1, DB: dbReq{Password: "x"}, API: apiReq{Key: "k"},
+				},
+				disable: OptEnv | OptEnvFile,
+			},
+			ExpectedErr: errors.New("host is required"),
+		},
+		"B5: explicit zero required number errors": {
+			Input: input{
+				config: &reqStruct{
+					Host: "localhost", Port: 0, DB: dbReq{Password: "x"}, API: apiReq{Key: "k"},
+				},
+				disable: OptEnv | OptEnvFile,
+			},
+			ExpectedErr: errors.New("port is required"),
+		},
+		"B5: missing nested field required by its own tag errors": {
+			Input: input{
+				config: &reqStruct{
+					Host: "localhost", Port: 1, API: apiReq{Key: "k"},
+				},
+				disable: OptEnv | OptEnvFile,
+			},
+			ExpectedErr: errors.New("db.password is required"),
+		},
+		"B5: missing struct required as a whole errors": {
+			Input: input{
+				config: &reqStruct{
+					Host: "localhost", Port: 1, DB: dbReq{Password: "x"},
+				},
+				disable: OptEnv | OptEnvFile,
+			},
+			ExpectedErr: errors.New("api is required"),
+		},
+		"B5: aggregates multiple missing fields": {
+			Input: input{
+				config:  &reqStruct{},
+				disable: OptEnv | OptEnvFile,
+			},
+			ExpectedErr: errors.New("host is required"),
+		},
+		"B5: flag-loaded value satisfies required": {
+			Input: input{
+				config: &reqStruct{
+					Port: 1, DB: dbReq{Password: "x"}, API: apiReq{Key: "k"},
+				},
+				flags:   []string{"-host=fromflag"},
+				disable: OptEnv | OptEnvFile,
+			},
+			Expected: reqStruct{
+				Host: "fromflag", Port: 1,
+				DB: dbReq{Password: "x"}, API: apiReq{Key: "k"},
 			},
 		},
 	}

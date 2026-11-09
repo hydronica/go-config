@@ -237,6 +237,12 @@ func (g *goConfig) Load() error {
 		os.Exit(0)
 	}
 
+	// Enforce req:"true" fields now that all sources have loaded, so a struct default
+	// counts as provided but an explicit zero value does not.
+	if err := encode.CheckRequired(g.config); err != nil {
+		return err
+	}
+
 	// validate if struct implements validator interface
 	if val, ok := g.config.(Validator); ok {
 		return val.Validate()

@@ -374,6 +374,18 @@ type options struct {
 }
 ```
 
+`Load` enforces `req:"true"` after every source (defaults, env, files, flags) has loaded. A
+value is missing when it is still the zero value at that point, so a struct default counts as
+provided but an explicit zero value (for example `0` for a required number) does not. A struct
+field can also be tagged `req:"true"`; it is reported missing when every field inside it is
+zero. Missing fields are collected and returned together in one error, naming the flag name for
+each field, for example:
+
+```text
+host is required
+db.password is required
+```
+
 You may turn sources off with Disable, or replace the defaults with SetOptions.
 Disable(OptFiles) removes `-c`/`-config`. SetOptions(OptFlag) keeps flags only.
 
