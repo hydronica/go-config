@@ -289,6 +289,40 @@ func TestGoConfig_Load(t *testing.T) {
 				DB: dbReq{Password: "x"}, API: apiReq{Key: "k"},
 			},
 		},
+		// B7: flag:"-" only opts a field out of flag registration. req:"true" must still be
+		// enforced on it, including on nested structs, while env and file values still count.
+		"B7: missing flag-disabled required field errors": {
+			Input: input{
+				config: &struct {
+					Secret string `flag:"-" req:"true"`
+				}{},
+				disable: OptEnv | OptEnvFile,
+			},
+			ExpectedErr: errors.New("secret is required"),
+		},
+		"B7: flag-disabled required field loaded from env satisfies required": {
+			Input: input{
+				config: &struct {
+					Secret string `flag:"-" req:"true"`
+				}{},
+				envs:    map[string]string{"SECRET": "s3cret"},
+				disable: OptEnvFile,
+			},
+			Expected: struct {
+				Secret string `flag:"-" req:"true"`
+			}{Secret: "s3cret"},
+		},
+		"B7: nested flag-disabled struct still checks its required fields": {
+			Input: input{
+				config: &struct {
+					Creds struct {
+						Password string `req:"true"`
+					} `flag:"-"`
+				}{},
+				disable: OptEnv | OptEnvFile,
+			},
+			ExpectedErr: errors.New("password is required"),
+		},
 		// B6: the README documents the fmt tag for time layouts; the code only read format.
 		"B6: fmt tag parses env value": {
 			Input: input{

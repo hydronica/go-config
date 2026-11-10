@@ -13,7 +13,8 @@ import (
 // (for example 0 for a required number) does not.
 //
 // Each error names the flag name for the field, the same name the flag package
-// registers (kebab-case, dot-joined for nested structs), for example:
+// registers (kebab-case, dot-joined for nested structs). A field tagged flag:"-" is
+// still checked, and its error uses the default kebab-case name, for example:
 //
 //	db.password is required
 //
@@ -44,7 +45,9 @@ func checkRequired(errs *appenderr.AppendErr, prefix string, vStruct reflect.Val
 		}
 		raw := sf.Tag.Get(FlagTag)
 		if raw == "-" {
-			continue
+			// flag:"-" only opts the field out of flag registration; req:"true" still applies.
+			// Use the default name, as for an untagged field.
+			raw = ""
 		}
 		name, omitPrefix, _ := ParseTag(raw)
 
