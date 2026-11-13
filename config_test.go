@@ -1,9 +1,14 @@
 package config
 
 import (
+	"bytes"
+	"errors"
 	"flag"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -30,12 +35,30 @@ type childStruct struct {
 }
 
 func TestGoConfig_Load(t *testing.T) {
-	type input struct {
-		config testStruct
-		envs   map[string]string
-		flags  []string
+	type dbReq struct {
+		Password string `req:"true"`
 	}
-	fn := func(in input) (testStruct, error) {
+	type apiReq struct {
+		Key string
+	}
+	type reqStruct struct {
+		Host string `req:"true"`
+		Port int    `req:"true"`
+		DB   dbReq  `flag:"db"`
+		API  apiReq `flag:"api" req:"true"`
+	}
+	type timeTags struct {
+		Fmt    time.Time `fmt:"2006-01-02"`
+		Format time.Time `format:"2006/01/02"`
+		Both   time.Time `fmt:"2006-01-02" format:"2006/01/02"`
+	}
+	type input struct {
+		config  any // pointer to the config struct; Load populates it in place
+		envs    map[string]string
+		flags   []string
+		disable Options // zero disables nothing
+	}
+	fn := func(in input) (any, error) {
 		if in.envs == nil {
 			in.envs = make(map[string]string)
 		}
@@ -44,7 +67,7 @@ func TestGoConfig_Load(t *testing.T) {
 		}
 		for k, v := range in.envs {
 			if err := os.Setenv(k, v); err != nil {
-				return testStruct{}, err
+				return nil, err
 			}
 		}
 		defer func() {
@@ -56,13 +79,14 @@ func TestGoConfig_Load(t *testing.T) {
 		}()
 
 		os.Args = append([]string{"go-config"}, in.flags...)
-		err := New(&in.config).Load()
-		return in.config, err
+		err := New(in.config).Disable(in.disable).Load()
+		// return the struct value so it compares against Expected values, not a pointer
+		return reflect.ValueOf(in.config).Elem().Interface(), err
 	}
-	cases := trial.Cases[input, testStruct]{
+	cases := trial.Cases[input, any]{
 		"default": {
 			Input: input{
-				config: testStruct{
+				config: &testStruct{
 					Dura:    time.Second,
 					Value:   1,
 					Uint:    2,
@@ -79,7 +103,7 @@ func TestGoConfig_Load(t *testing.T) {
 		},
 		"file": {
 			Input: input{
-				config: testStruct{
+				config: &testStruct{
 					Dura:    time.Second,
 					Value:   1,
 					Uint:    2,
@@ -89,7 +113,7 @@ func TestGoConfig_Load(t *testing.T) {
 			},
 			Expected: testStruct{
 				Name:    "toml",
-				Time:    trial.TimeDay("2010-08-10"),
+				Time:    trial.Day("2010-08-10"),
 				Dura:    10 * time.Second,
 				Enable:  true,
 				Value:   10,
@@ -99,7 +123,7 @@ func TestGoConfig_Load(t *testing.T) {
 		},
 		"flag": {
 			Input: input{
-				config: testStruct{
+				config: &testStruct{
 					Dura:    time.Second,
 					Value:   1,
 					Uint:    2,
@@ -110,7 +134,7 @@ func TestGoConfig_Load(t *testing.T) {
 			},
 			Expected: testStruct{
 				Name:    "flag",
-				Time:    trial.TimeDay("2012-02-04"),
+				Time:    trial.Day("2012-02-04"),
 				Dura:    5 * time.Second,
 				Value:   1,
 				Uint:    2,
@@ -119,7 +143,7 @@ func TestGoConfig_Load(t *testing.T) {
 		},
 		"env": {
 			Input: input{
-				config: testStruct{
+				config: &testStruct{
 					Dura:    time.Second,
 					Value:   1,
 					Uint:    2,
@@ -134,7 +158,7 @@ func TestGoConfig_Load(t *testing.T) {
 			},
 			Expected: testStruct{
 				Name:    "env",
-				Time:    trial.TimeDay("2019-05-06"),
+				Time:    trial.Day("2019-05-06"),
 				Dura:    12 * time.Second,
 				Value:   8,
 				Uint:    2,
@@ -144,7 +168,7 @@ func TestGoConfig_Load(t *testing.T) {
 		},
 		"env+file": {
 			Input: input{
-				config: testStruct{
+				config: &testStruct{
 					Dura:    time.Second,
 					Value:   1,
 					Uint:    2,
@@ -160,7 +184,7 @@ func TestGoConfig_Load(t *testing.T) {
 			},
 			Expected: testStruct{
 				Name:    "toml",
-				Time:    trial.TimeDay("2010-08-10"),
+				Time:    trial.Day("2010-08-10"),
 				Dura:    10 * time.Second,
 				Value:   10,
 				Uint:    2,
@@ -171,7 +195,7 @@ func TestGoConfig_Load(t *testing.T) {
 		},
 		"env+file+flag": {
 			Input: input{
-				config: testStruct{
+				config: &testStruct{
 					Dura:    time.Second,
 					Value:   1,
 					Uint:    2,
@@ -188,13 +212,145 @@ func TestGoConfig_Load(t *testing.T) {
 			},
 			Expected: testStruct{
 				Name:    "flag",
-				Time:    trial.TimeDay("2012-02-04"),
+				Time:    trial.Day("2012-02-04"),
 				Dura:    5 * time.Second,
 				Value:   10,
 				Uint:    2,
 				Float32: 55,
 				Float64: 123.4,
 			},
+		},
+		"B5: struct default satisfies required": {
+			Input: input{
+				config: &reqStruct{
+					Host: "localhost", Port: 1,
+					DB: dbReq{Password: "x"}, API: apiReq{Key: "k"},
+				},
+				disable: OptEnv | OptEnvFile,
+			},
+			Expected: reqStruct{
+				Host: "localhost", Port: 1,
+				DB: dbReq{Password: "x"}, API: apiReq{Key: "k"},
+			},
+		},
+		"B5: missing scalar required field errors": {
+			Input: input{
+				config: &reqStruct{
+					Port: 1, DB: dbReq{Password: "x"}, API: apiReq{Key: "k"},
+				},
+				disable: OptEnv | OptEnvFile,
+			},
+			ExpectedErr: errors.New("host is required"),
+		},
+		"B5: explicit zero required number errors": {
+			Input: input{
+				config: &reqStruct{
+					Host: "localhost", Port: 0, DB: dbReq{Password: "x"}, API: apiReq{Key: "k"},
+				},
+				disable: OptEnv | OptEnvFile,
+			},
+			ExpectedErr: errors.New("port is required"),
+		},
+		"B5: missing nested field required by its own tag errors": {
+			Input: input{
+				config: &reqStruct{
+					Host: "localhost", Port: 1, API: apiReq{Key: "k"},
+				},
+				disable: OptEnv | OptEnvFile,
+			},
+			ExpectedErr: errors.New("db.password is required"),
+		},
+		"B5: missing struct required as a whole errors": {
+			Input: input{
+				config: &reqStruct{
+					Host: "localhost", Port: 1, DB: dbReq{Password: "x"},
+				},
+				disable: OptEnv | OptEnvFile,
+			},
+			ExpectedErr: errors.New("api is required"),
+		},
+		"B5: aggregates multiple missing fields": {
+			Input: input{
+				config:  &reqStruct{},
+				disable: OptEnv | OptEnvFile,
+			},
+			ExpectedErr: errors.New("host is required"),
+		},
+		"B5: flag-loaded value satisfies required": {
+			Input: input{
+				config: &reqStruct{
+					Port: 1, DB: dbReq{Password: "x"}, API: apiReq{Key: "k"},
+				},
+				flags:   []string{"-host=fromflag"},
+				disable: OptEnv | OptEnvFile,
+			},
+			Expected: reqStruct{
+				Host: "fromflag", Port: 1,
+				DB: dbReq{Password: "x"}, API: apiReq{Key: "k"},
+			},
+		},
+		// B7: flag:"-" only opts a field out of flag registration. req:"true" must still be
+		// enforced on it, including on nested structs, while env and file values still count.
+		"B7: missing flag-disabled required field errors": {
+			Input: input{
+				config: &struct {
+					Secret string `flag:"-" req:"true"`
+				}{},
+				disable: OptEnv | OptEnvFile,
+			},
+			ExpectedErr: errors.New("secret is required"),
+		},
+		"B7: flag-disabled required field loaded from env satisfies required": {
+			Input: input{
+				config: &struct {
+					Secret string `flag:"-" req:"true"`
+				}{},
+				envs:    map[string]string{"SECRET": "s3cret"},
+				disable: OptEnvFile,
+			},
+			Expected: struct {
+				Secret string `flag:"-" req:"true"`
+			}{Secret: "s3cret"},
+		},
+		"B7: nested flag-disabled struct still checks its required fields": {
+			Input: input{
+				config: &struct {
+					Creds struct {
+						Password string `req:"true"`
+					} `flag:"-"`
+				}{},
+				disable: OptEnv | OptEnvFile,
+			},
+			ExpectedErr: errors.New("password is required"),
+		},
+		// B6: the README documents the fmt tag for time layouts; the code only read format.
+		"B6: fmt tag parses env value": {
+			Input: input{
+				config: &timeTags{},
+				envs:   map[string]string{"FMT": "2019-05-06"},
+			},
+			Expected: timeTags{Fmt: trial.Day("2019-05-06")},
+		},
+		"B6: format tag still parses env value": {
+			Input: input{
+				config: &timeTags{},
+				envs:   map[string]string{"FORMAT": "2019/05/06"},
+			},
+			Expected: timeTags{Format: trial.Day("2019-05-06")},
+		},
+		"B6: fmt wins when fmt and format are both set": {
+			Input: input{
+				config: &timeTags{},
+				envs:   map[string]string{"BOTH": "2019-05-06"},
+			},
+			Expected: timeTags{Both: trial.Day("2019-05-06")},
+		},
+		"B6: fmt tag parses flag value": {
+			Input: input{
+				config: &timeTags{},
+				flags:  []string{"-fmt=2019-05-06"},
+			},
+			Expected: timeTags{Fmt: trial.Day("2019-05-06")},
 		},
 	}
 	trial.New(fn, cases).SubTest(t)
@@ -221,7 +377,7 @@ func TestLoadEnv(t *testing.T) {
 	exp := testStruct{
 		Name:    "env",
 		Dura:    12 * time.Second,
-		Time:    trial.TimeDay("2019-05-06"),
+		Time:    trial.Day("2019-05-06"),
 		Value:   8,
 		Uint:    2,
 		Float32: 12.3,
@@ -245,7 +401,7 @@ func TestLoadFile(t *testing.T) {
 	}
 	exp := testStruct{
 		Dura:    10 * time.Second,
-		Time:    trial.TimeDay("2010-08-10"),
+		Time:    trial.Day("2010-08-10"),
 		Value:   10,
 		Uint:    2,
 		Float32: 99.9,
@@ -276,7 +432,7 @@ func TestLoadFlag(t *testing.T) {
 	}
 	exp := testStruct{
 		Name:    "flag",
-		Time:    trial.TimeDay("2012-02-04"),
+		Time:    trial.Day("2012-02-04"),
 		Dura:    5 * time.Second,
 		Value:   1,
 		Uint:    2,
@@ -376,7 +532,7 @@ func TestGoConfig_ConfigPath(t *testing.T) {
 			Input: input{configPaths: []string{"test/test.toml"}},
 			Expected: testStruct{
 				Name:    "toml",
-				Time:    trial.TimeDay("2010-08-10"),
+				Time:    trial.Day("2010-08-10"),
 				Dura:    10 * time.Second,
 				Enable:  true,
 				Value:   10,
@@ -391,7 +547,7 @@ func TestGoConfig_ConfigPath(t *testing.T) {
 			},
 			Expected: testStruct{
 				Name:    "yaml",
-				Time:    trial.TimeDay("2010-08-10"),
+				Time:    trial.Day("2010-08-10"),
 				Dura:    10 * time.Second,
 				Enable:  true,
 				Value:   10,
@@ -544,6 +700,161 @@ func TestResolveBinaryPath(t *testing.T) {
 		},
 	}
 	trial.New(fn, cases).SubTest(t)
+}
+
+func TestShow(t *testing.T) {
+	fn := func(in interface{}) (string, error) {
+		var buf bytes.Buffer
+		err := New(in).Show(&buf)
+		return buf.String(), err
+	}
+	// Named so the nested cases can share a shape. Two anonymous struct literals are different types.
+	type dbCreds struct {
+		User string
+		Pass string
+	}
+	cases := trial.Cases[interface{}, string]{
+		"B1: includes unmasked field": {
+			Input: &struct {
+				Host string
+			}{Host: "localhost"},
+			Expected: "Host: localhost\n",
+		},
+		"B1: masks set field": {
+			Input: &struct {
+				Host     string
+				Password string `mask:"true"`
+			}{Host: "localhost", Password: "s3cret"},
+			Expected: "Host: localhost\nPassword: ****\n",
+		},
+		"B1: masked zero field prints blank": {
+			Input: &struct {
+				Host     string
+				Password string `mask:"true"`
+			}{Host: "localhost"},
+			Expected: "Host: localhost\nPassword:\n",
+		},
+		"B1: nil masked pointer prints nil": {
+			Input: &struct {
+				Token *string `mask:"true"`
+			}{},
+			Expected: "Token: <nil>\n",
+		},
+		"B1: masked struct masks each field": {
+			Input: &struct {
+				Name string
+				DB   dbCreds `mask:"true"`
+			}{Name: "app", DB: dbCreds{User: "root", Pass: "s3cret"}},
+			Expected: "Name: app\nDB:\n  User: ****\n  Pass: ****\n",
+		},
+		"B1: masked struct zero field prints blank": {
+			Input: &struct {
+				DB dbCreds `mask:"true"`
+			}{DB: dbCreds{User: "root"}},
+			Expected: "DB:\n  User: ****\n  Pass:\n",
+		},
+	}
+	trial.New(fn, cases).SubTest(t)
+}
+
+func TestLoadOrDie(t *testing.T) {
+	if os.Getenv("GO_CONFIG_LOAD_OR_DIE") == "1" {
+		// Not a struct pointer, so Load fails before any config is read.
+		New(struct{}{}).LoadOrDie()
+		return
+	}
+	bin, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(bin, "-test.run=^TestLoadOrDie$")
+	cmd.Env = append(os.Environ(), "GO_CONFIG_LOAD_OR_DIE=1")
+	err = cmd.Run()
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) || exitErr.ExitCode() != 1 {
+		t.Fatalf("LoadOrDie() error = %v, want exit status 1", err)
+	}
+}
+
+func TestLoad_twice(t *testing.T) {
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	t.Cleanup(func() {
+		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	})
+	region := flag.String("region", "", "library flag")
+
+	type cfg struct{ Name string }
+	var first, second cfg
+
+	os.Args = []string{"go-config", "-region=us", "-name=first"}
+	if err := New(&first).Disable(OptEnv | OptEnvFile).Load(); err != nil {
+		t.Fatalf("first Load() error = %v", err)
+	}
+	if first.Name != "first" {
+		t.Fatalf("first Load() Name = %q, want first", first.Name)
+	}
+	if *region != "us" {
+		t.Fatalf("global flag region = %q, want us", *region)
+	}
+
+	os.Args = []string{"go-config", "-name=second"}
+	if err := New(&second).Disable(OptEnv | OptEnvFile).Load(); err != nil {
+		t.Fatalf("second Load() error = %v", err)
+	}
+	if second.Name != "second" {
+		t.Fatalf("second Load() Name = %q, want second", second.Name)
+	}
+}
+
+func TestLoad_reservedFlag(t *testing.T) {
+	const want = `flag "show" is already used by go-config (-show). Call Disable(OptShow), or rename the flag with a tag such as flag:"display".`
+	reset := func() {
+		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	}
+	reset()
+	t.Cleanup(reset)
+
+	flag.Bool("show", false, "app show")
+	os.Args = []string{"go-config"}
+	var cfg struct{ Name string }
+	err := New(&cfg).Disable(OptEnv | OptEnvFile).Load()
+	if err == nil || !strings.Contains(err.Error(), want) {
+		t.Fatalf("Load() with global -show error = %v, want it to contain %q", err, want)
+	}
+
+	reset()
+	os.Args = []string{"go-config"}
+	var tagged struct {
+		Shown bool `flag:"show"`
+	}
+	err = New(&tagged).Disable(OptEnv | OptEnvFile).Load()
+	if err == nil || err.Error() != want {
+		t.Fatalf("Load() with flag:\"show\" error = %v, want %q", err, want)
+	}
+
+	reset()
+	flag.Bool("show", false, "app show")
+	os.Args = []string{"go-config", "-show"}
+	err = New(&cfg).Disable(OptEnv | OptEnvFile | OptShow).Load()
+	if err != nil {
+		t.Fatalf("Load() with Disable(OptShow) error = %v", err)
+	}
+}
+
+func TestLoad_disableFilesOnly(t *testing.T) {
+	// Disable(OptFiles) alone (without also disabling OptGenConf) left g.genConfig nil
+	// while OptGenConf's isEnabled check still passed, panicking on *g.genConfig in Load.
+	// README documents this exact call (Disable(OptEnv | OptEnvFile | OptFiles)).
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	t.Cleanup(func() {
+		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	})
+
+	os.Args = []string{"go-config"}
+	var cfg struct{ Name string }
+	if err := New(&cfg).Disable(OptEnv | OptEnvFile | OptFiles).Load(); err != nil {
+		t.Fatalf("Load() with Disable(OptFiles) error = %v, want nil", err)
+	}
 }
 
 func TestOptions(t *testing.T) {

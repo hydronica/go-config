@@ -117,7 +117,7 @@ typeCheck:
 		e.write(name, field.Float())
 	case reflect.Struct:
 		if field.Type().String() == "time.Time" {
-			timeFmt := sf.Tag.Get(encode.FormatTag)
+			timeFmt := encode.TimeFormat(sf)
 			if timeFmt == "" {
 				timeFmt = time.RFC3339
 			}

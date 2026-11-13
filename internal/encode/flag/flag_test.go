@@ -124,8 +124,8 @@ func TestNew(t *testing.T) {
 				CTime    time.Time `flag:"ctime" format:"2006-01-02"`
 				WaitTime time.Duration
 			}{
-				Time:     trial.TimeDay("2019-01-02"),
-				CTime:    trial.TimeDay("2019-01-02"),
+				Time:     trial.Day("2019-01-02"),
+				CTime:    trial.Day("2019-01-02"),
 				WaitTime: time.Hour,
 			},
 			Expected: map[string]*tFlag{
@@ -310,7 +310,7 @@ func TestUnmarshal(t *testing.T) {
 		},
 		"time.Time": {
 			Input:    input{args: []string{"-time=2010-01-02"}},
-			Expected: &tConfig{Time: trial.TimeDay("2010-01-02")},
+			Expected: &tConfig{Time: trial.Day("2010-01-02")},
 		},
 		"int": {
 			Input:    input{args: []string{"-int=10", "-int8=8", "-int16=16", "-int32=32", "-int64=64"}},
@@ -504,7 +504,8 @@ func TestUnmarshal(t *testing.T) {
 
 func TestFlags_Args(t *testing.T) {
 	type input struct {
-		args []string
+		args       []string
+		globalFlag string
 	}
 	type output struct {
 		Args   []string `flag:"-"`
@@ -518,6 +519,10 @@ func TestFlags_Args(t *testing.T) {
 		}()
 
 		c := &output{}
+		if in.globalFlag != "" {
+			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+			flag.String(in.globalFlag, "", "library flag")
+		}
 		os.Args = append([]string{"go-config"}, in.args...)
 		f, err := New(c)
 		if err != nil {
@@ -560,6 +565,10 @@ func TestFlags_Args(t *testing.T) {
 		"double-dash ends flag parsing": {
 			Input:    input{args: []string{"-name=foo", "--", "-not-a-flag", "pos"}},
 			Expected: &output{Args: []string{"-not-a-flag", "pos"}, Name: "foo"},
+		},
+		"global flag matches struct field": {
+			Input:       input{globalFlag: "name"},
+			ExpectedErr: errors.New(`flag "name" is already defined by the config struct and a global flag. Rename one of them.`),
 		},
 	}
 	trial.New(fn, cases).SubTest(t)

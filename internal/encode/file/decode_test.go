@@ -33,7 +33,7 @@ func TestLoad(t *testing.T) {
 				Value:  10,
 				Enable: true,
 				Dura:   10 * time.Second,
-				Time:   trial.TimeDay("2010-08-10"),
+				Time:   trial.Day("2010-08-10"),
 			},
 		},
 		"json": {
@@ -42,7 +42,7 @@ func TestLoad(t *testing.T) {
 				Name:   "json",
 				Value:  10,
 				Enable: true,
-				Time:   trial.TimeDay("2010-08-10"),
+				Time:   trial.Day("2010-08-10"),
 				//Dura: 10 * time.Second, //TODO add support
 			},
 		},
@@ -53,7 +53,7 @@ func TestLoad(t *testing.T) {
 				Value:  10,
 				Enable: true,
 				Dura:   10 * time.Second,
-				Time:   trial.TimeDay("2010-08-10"),
+				Time:   trial.Day("2010-08-10"),
 			},
 		},
 		"env": {
@@ -64,7 +64,7 @@ func TestLoad(t *testing.T) {
 				Enable:  true,
 				Float64: 99.9,
 				Dura:    10 * time.Second,
-				Time:    trial.TimeDay("2010-08-10"),
+				Time:    trial.Day("2010-08-10"),
 			},
 		},
 		"unknown": {

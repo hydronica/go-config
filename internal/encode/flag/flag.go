@@ -152,7 +152,7 @@ switchStart:
 		goto switchStart
 	case reflect.Struct:
 		if field.Type().String() == "time.Time" {
-			timeFmt := getTimeFormat(sf.Tag.Get(encode.FormatTag))
+			timeFmt := getTimeFormat(encode.TimeFormat(sf))
 			t := field.Interface().(time.Time)
 			flagSet.String(name, t.Format(timeFmt), desc)
 			defaults[name] = t.Format(timeFmt)
@@ -169,10 +169,23 @@ switchStart:
 
 // Parse the internal flags and the user defined flags.
 // Positional args may appear before, after, or between flags.
+// Global flags that reuse a struct field name return an error. Reserved go-config
+// names are rejected by the caller before Parse.
 func (f *Flags) Parse() error {
+	var collision error
 	flag.VisitAll(func(flg *flag.Flag) {
+		if collision != nil {
+			return
+		}
+		if f.Lookup(flg.Name) != nil {
+			collision = fmt.Errorf("flag %q is already defined by the config struct and a global flag. Rename one of them.", flg.Name)
+			return
+		}
 		f.Var(flg.Value, flg.Name, flg.Usage)
 	})
+	if collision != nil {
+		return collision
+	}
 
 	flagArgs, posArgs := splitFlagArgs(f.FlagSet, os.Args[1:])
 	if err := f.FlagSet.Parse(flagArgs); err != nil {
