@@ -26,7 +26,7 @@ func (d *Decoder) Unmarshal(v interface{}) error {
 		d.GetVal = os.Getenv
 	}
 	val := reflect.ValueOf(v)
-	if val.Kind() != reflect.Ptr || val.IsNil() {
+	if val.Kind() != reflect.Pointer || val.IsNil() {
 		return fmt.Errorf("'%v' must be a non-nil pointer", reflect.TypeOf(v))
 	}
 	vStruct := val.Elem()

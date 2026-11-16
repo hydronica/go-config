@@ -17,7 +17,7 @@ func LoadEnvFile(path string, v interface{}) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read-only file; a close error is not actionable
 	m, err := readDotenvMap(f)
 	if err != nil {
 		return err

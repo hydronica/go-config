@@ -32,7 +32,7 @@ func IsRecursableStruct(field reflect.Value) bool {
 }
 
 func derefStructField(field reflect.Value) reflect.Value {
-	for field.Kind() == reflect.Ptr {
+	for field.Kind() == reflect.Pointer {
 		if field.IsNil() {
 			return reflect.New(field.Type().Elem()).Elem()
 		}
@@ -49,7 +49,7 @@ func implementsIface(v reflect.Value, iface reflect.Type) bool {
 	if v.CanAddr() && v.Addr().Type().Implements(iface) {
 		return true
 	}
-	if t.Kind() != reflect.Ptr && reflect.PointerTo(t).Implements(iface) {
+	if t.Kind() != reflect.Pointer && reflect.PointerTo(t).Implements(iface) {
 		return true
 	}
 	return false
@@ -67,7 +67,7 @@ func ShouldProcessField(sf reflect.StructField, field reflect.Value) bool {
 // StructValue returns the struct value to recurse into without modifying nil pointers.
 func StructValue(field reflect.Value) (reflect.Value, bool) {
 	switch field.Kind() {
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if field.IsNil() {
 			return reflect.New(field.Type().Elem()).Elem(), true
 		}
@@ -82,7 +82,7 @@ func StructValue(field reflect.Value) (reflect.Value, bool) {
 // InitStructValue returns the struct value to recurse into, allocating nil pointers when settable.
 func InitStructValue(field reflect.Value) (reflect.Value, bool) {
 	switch field.Kind() {
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if field.IsNil() {
 			if !field.CanSet() {
 				return reflect.Value{}, false

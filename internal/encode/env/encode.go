@@ -26,7 +26,7 @@ type Encoder struct {
 
 func (e *Encoder) Marshal(v interface{}) ([]byte, error) {
 	val := reflect.ValueOf(v)
-	if val.Kind() != reflect.Ptr || val.IsNil() {
+	if val.Kind() != reflect.Pointer || val.IsNil() {
 		return nil, fmt.Errorf("'%v' must be a non-nil pointer", reflect.TypeOf(v))
 	}
 	vStruct := val.Elem()
@@ -64,7 +64,7 @@ func (e *Encoder) marshal(prefix string, vStruct reflect.Value) ([]byte, error) 
 			case name != "":
 				childPrefix = encode.JoinPrefix(prefix, name, "_")
 			}
-			if field.Kind() == reflect.Ptr && field.IsNil() {
+			if field.Kind() == reflect.Pointer && field.IsNil() {
 				continue
 			}
 			child, ok := encode.StructValue(field)
@@ -128,7 +128,7 @@ typeCheck:
 			e.write(name, string(b))
 			return nil
 		}
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if field.IsNil() {
 			return nil
 		}
