@@ -1,8 +1,8 @@
 # go-config
 [![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://godoc.org/github.com/hydronica/go-config)
-![Tests](https://github.com/github/docs/actions/workflows/test.yml/badge.svg)
-[![Go Report Card](https://goreportcard.com/badge/github.com/hydronica/go-config)](https://goreportcard.com/report/github.com/hydronica/go-config)
-[![codecov](https://codecov.io/gh/hydronica/go-config/branch/master/graph/badge.svg)](https://codecov.io/gh/hydronica/go-config)
+[![Tests](https://github.com/hydronica/go-config/actions/workflows/test.yml/badge.svg)](https://github.com/hydronica/go-config/actions/workflows/test.yml)
+[![Lint](https://github.com/hydronica/go-config/actions/workflows/lint.yml/badge.svg)](https://github.com/hydronica/go-config/actions/workflows/lint.yml)
+[![codecov](https://codecov.io/gh/hydronica/go-config/branch/main/graph/badge.svg)](https://codecov.io/gh/hydronica/go-config)
 
 Effortless, stateful go configuration.
 
