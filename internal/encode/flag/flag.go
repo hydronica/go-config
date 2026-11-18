@@ -144,7 +144,7 @@ switchStart:
 	case reflect.Float32, reflect.Float64:
 		flagSet.Float64(name, field.Float(), desc)
 		defaults[name] = strconv.FormatFloat(field.Float(), 'f', -1, 64)
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if field.IsNil() {
 			field = reflect.New(field.Type().Elem())
 		}
@@ -178,7 +178,7 @@ func (f *Flags) Parse() error {
 			return
 		}
 		if f.Lookup(flg.Name) != nil {
-			collision = fmt.Errorf("flag %q is already defined by the config struct and a global flag. Rename one of them.", flg.Name)
+			collision = fmt.Errorf("flag %q is already defined by the config struct and a global flag; rename one of them", flg.Name)
 			return
 		}
 		f.Var(flg.Value, flg.Name, flg.Usage)
@@ -396,7 +396,7 @@ func isValidConfig(i interface{}) bool {
 		return false
 	}
 	v := reflect.ValueOf(i)
-	if v.Kind() != reflect.Ptr {
+	if v.Kind() != reflect.Pointer {
 		return false
 	}
 	if v.Elem().Kind() != reflect.Struct {
@@ -406,15 +406,11 @@ func isValidConfig(i interface{}) bool {
 }
 
 func isAlias(v reflect.Value) bool {
-	if v.Kind() == reflect.Struct || v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Struct || v.Kind() == reflect.Pointer {
 		return false
 	}
 	s := fmt.Sprint(v.Type())
 	return strings.Contains(s, ".")
-}
-
-func implementsUnmarshaler(v reflect.Value) bool {
-	return v.Type().Implements(reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem())
 }
 
 func implementsMarshaler(v reflect.Value) bool {

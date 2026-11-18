@@ -46,8 +46,8 @@ func TestDecoder_Unmarshal(t *testing.T) {
 
 		// ignored fields
 		IgnoreMe         string `env:"-"`
-		privateField     string // should not be populated
-		privateFieldWTag string `env:"private_field_w_tag"` // Will not populate private field even with tag.
+		privateField     string //nolint:unused // should not be populated; verifies decoder skips unexported fields
+		privateFieldWTag string `env:"private_field_w_tag"` //nolint:unused // will not populate private field even with tag
 
 		//alias'
 		Aint    Aint
@@ -184,7 +184,7 @@ func TestDecoder_Unmarshal(t *testing.T) {
 		},
 		"pointers": {
 			Input:    input{args: map[string]string{"INTP": "3", "UINTP": "4", "FLOATP": "5.6"}},
-			Expected: &tConfig{IntP: trial.IntP(3), UintP: trial.UintP(4), FloatP: trial.Float64P(5.6)},
+			Expected: &tConfig{IntP: trial.Pointer(3), UintP: trial.Pointer(uint(4)), FloatP: trial.Pointer(5.6)},
 		},
 		"struct": {
 			Input: input{

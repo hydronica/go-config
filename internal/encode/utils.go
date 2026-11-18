@@ -78,12 +78,12 @@ func SetField(value reflect.Value, s string, sField reflect.StructField) error {
 
 		value.SetUint(i)
 	case reflect.Float32, reflect.Float64:
-		f, err := strconv.ParseFloat(s, 0)
+		f, err := strconv.ParseFloat(s, value.Type().Bits())
 		if err != nil {
 			return err
 		}
 		value.SetFloat(f)
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if isZero(value.Type().Elem().Kind(), s) {
 			return nil
 		}
@@ -234,7 +234,7 @@ func implementsUnmarshaler(v reflect.Value) bool {
 }
 
 func isAlias(v reflect.Value) bool {
-	if v.Kind() == reflect.Struct || v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Struct || v.Kind() == reflect.Pointer {
 		return false
 	}
 	s := fmt.Sprint(v.Type())

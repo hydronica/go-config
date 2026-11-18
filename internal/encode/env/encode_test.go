@@ -108,9 +108,9 @@ func TestEncoder_Marshal(t *testing.T) {
 				String   *string
 				MyStruct *mStruct
 			}{
-				Int:      trial.IntP(1),
-				Uint:     trial.UintP(2),
-				Float:    trial.Float64P(3.4),
+				Int:      trial.Pointer(1),
+				Uint:     trial.Pointer(uint(2)),
+				Float:    trial.Pointer(3.4),
 				MyStruct: &mStruct{value: "c"},
 			},
 			Expected: "INT=1\nUINT=2\nFLOAT=3.4\nMY_STRUCT=c\n",

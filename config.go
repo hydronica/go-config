@@ -31,7 +31,6 @@ type goConfig struct {
 
 	// special flags
 	showVersion *bool
-	appName     string // self proclaimed app name.
 	showConfig  *bool
 	version     string
 	description string
@@ -375,7 +374,7 @@ func (g *goConfig) Show(w io.Writer) error {
 		return errors.New("show: config is nil")
 	}
 	v := reflect.ValueOf(g.config)
-	if v.Kind() != reflect.Ptr || v.IsNil() || v.Elem().Kind() != reflect.Struct {
+	if v.Kind() != reflect.Pointer || v.IsNil() || v.Elem().Kind() != reflect.Struct {
 		return errors.New("show: config must be a pointer to a struct")
 	}
 	return writeShow(w, v.Elem(), 0, false)
@@ -390,7 +389,7 @@ func writeShow(w io.Writer, v reflect.Value, indent int, masked bool) error {
 			continue
 		}
 		fieldMasked := masked || sf.Tag.Get(encode.MaskTag) == "true"
-		if field.Kind() == reflect.Ptr && field.IsNil() {
+		if field.Kind() == reflect.Pointer && field.IsNil() {
 			if err := writeShowLine(w, indent, sf.Name, "<nil>"); err != nil {
 				return err
 			}
@@ -410,7 +409,7 @@ func writeShow(w io.Writer, v reflect.Value, indent int, masked bool) error {
 			continue
 		}
 		val := field
-		for val.Kind() == reflect.Ptr && !val.IsNil() {
+		for val.Kind() == reflect.Pointer && !val.IsNil() {
 			val = val.Elem()
 		}
 		if !val.CanInterface() {

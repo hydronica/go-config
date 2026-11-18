@@ -26,7 +26,7 @@ func TestNew(t *testing.T) {
 			return nil, err
 		}
 		result := make(map[string]*tFlag)
-		f.FlagSet.VisitAll(func(flg *flag.Flag) {
+		f.VisitAll(func(flg *flag.Flag) {
 			key := flg.Name
 			result[key] = &tFlag{Usage: flg.Usage, Def: flg.DefValue}
 		})
@@ -181,9 +181,9 @@ func TestNew(t *testing.T) {
 				String   *string
 				MyStruct *mStruct
 			}{
-				Int:      trial.IntP(1),
-				Uint:     trial.UintP(2),
-				Float:    trial.Float64P(3.4),
+				Int:      trial.Pointer(1),
+				Uint:     trial.Pointer(uint(2)),
+				Float:    trial.Pointer(3.4),
 				MyStruct: &mStruct{value: "c"},
 			},
 			Expected: map[string]*tFlag{
@@ -350,7 +350,7 @@ func TestUnmarshal(t *testing.T) {
 		},
 		"pointers": {
 			Input:    input{args: []string{"-intp=3", "-uintp=4", "-floatp=5.6"}},
-			Expected: &tConfig{IntP: trial.IntP(3), UintP: trial.UintP(4), FloatP: trial.Float64P(5.6)},
+			Expected: &tConfig{IntP: trial.Pointer(3), UintP: trial.Pointer(uint(4)), FloatP: trial.Pointer(5.6)},
 		},
 		"struct": {
 			Input: input{
@@ -568,7 +568,7 @@ func TestFlags_Args(t *testing.T) {
 		},
 		"global flag matches struct field": {
 			Input:       input{globalFlag: "name"},
-			ExpectedErr: errors.New(`flag "name" is already defined by the config struct and a global flag. Rename one of them.`),
+			ExpectedErr: errors.New(`flag "name" is already defined by the config struct and a global flag; rename one of them`),
 		},
 	}
 	trial.New(fn, cases).SubTest(t)

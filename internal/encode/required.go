@@ -25,7 +25,7 @@ import (
 // Returns nil if i is not a pointer to a struct.
 func CheckRequired(i interface{}) error {
 	v := reflect.ValueOf(i)
-	if v.Kind() != reflect.Ptr || v.IsNil() || v.Elem().Kind() != reflect.Struct {
+	if v.Kind() != reflect.Pointer || v.IsNil() || v.Elem().Kind() != reflect.Struct {
 		return nil
 	}
 	errs := appenderr.New()
